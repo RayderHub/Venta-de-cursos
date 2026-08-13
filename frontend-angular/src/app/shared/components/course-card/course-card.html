@@ -1,0 +1,20 @@
+<article class="course-card" [class.compact]="compact()">
+  <a class="course-art" [routerLink]="['/curso', course().id]">
+    <img [src]="imageSrc()" [alt]="course().title">
+  </a>
+  <div class="course-body">
+    <span class="course-category">{{ course().category }}</span>
+    <a class="course-title" [routerLink]="['/curso', course().id]">{{ course().title }}</a>
+    <span class="course-author">● {{ course().instructor }}</span>
+    <div class="rating">★★★★★ <span>({{ course().reviews }})</span></div>
+    <div class="course-footer">
+      <strong>${{ course().price.toFixed(2) }}</strong>
+      @if (course().oldPrice) {
+        <del>${{ course().oldPrice?.toFixed(2) }}</del>
+      }
+      <a class="buy-button" routerLink="/carrito" (click)="agregarAlCarrito()">
+        {{ carrito.has(course().id) ? 'En carrito' : 'Comprar' }}
+      </a>
+    </div>
+  </div>
+</article>

@@ -1,0 +1,132 @@
+<app-public-header />
+
+<main class="detail-page">
+  @if (course(); as course) {
+    <div class="breadcrumbs">Inicio / SkillAcademy / <strong>{{ course.title }}</strong></div>
+
+    <section class="detail-hero">
+      <div class="hero-info">
+        <div class="video-card">
+          <img [src]="imageSrc()" [alt]="course.title">
+        </div>
+      </div>
+
+      <aside class="purchase-panel">
+        <h2>{{ course.title }}</h2>
+        <p class="hero-instructor">
+          Por: <strong>{{ course.instructor }}</strong>
+          @if (course.instructorId) {
+            <a class="instructor-link" [routerLink]="['/instructor', course.instructorId]">Ver perfil</a>
+          }
+        </p>
+        <strong class="hero-price">${{ course.price.toFixed(2) }}</strong>
+
+        @if (message()) {
+          <p class="purchase-message">{{ message() }}</p>
+        }
+
+        @if (yaLoTiene()) {
+          <button class="has-course-button" disabled>Ya tienes este curso</button>
+        } @else {
+          <button class="primary-button" (click)="comprar()" [disabled]="comprando()">
+            {{ comprando() ? 'Procesando...' : 'Comprar Curso' }}
+          </button>
+          <button class="secondary-button" (click)="agregarAlCarrito()" [disabled]="isInCart()">
+            {{ isInCart() ? 'Ya esta en el carrito' : 'Agregar al carrito' }}
+          </button>
+        }
+        <small>Acceso inmediato al contenido despues de completar el checkout simulado.</small>
+      </aside>
+    </section>
+
+    <nav class="tabs">
+      <button type="button" [class.active]="activeTab() === 'descripcion'" (click)="tab('descripcion')">Descripcion</button>
+      <button type="button" [class.active]="activeTab() === 'lecciones'" (click)="tab('lecciones')">Lecciones</button>
+      <button type="button" [class.active]="activeTab() === 'requisitos'" (click)="tab('requisitos')">Requisitos</button>
+    </nav>
+
+    <section class="detail-content">
+      <article>
+        @if (activeTab() === 'descripcion') {
+          <h2>Descripcion</h2>
+          <p class="course-meta">{{ course.level }} - {{ course.category }}</p>
+          <p>{{ course.description || 'Este curso aun no tiene descripcion.' }}</p>
+        }
+
+        @if (activeTab() === 'lecciones') {
+          <h2>Lecciones</h2>
+          <div class="lesson-list">
+            @for (leccion of lecciones(); track leccion.id) {
+              <article class="lesson-item">
+                <div class="lesson-number">{{ $index + 1 }}</div>
+                <div class="lesson-info">
+                  <strong>{{ leccion.titulo }}</strong>
+                  @if (leccion.descripcion) {
+                    <p>{{ leccion.descripcion }}</p>
+                  }
+                </div>
+              </article>
+            } @empty {
+              <p class="muted">Este curso aun no tiene lecciones.</p>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'requisitos') {
+          <h2>Requisitos</h2>
+          <p>Los requisitos se configuraran desde el contenido del curso.</p>
+        }
+      </article>
+
+      <aside class="benefits">
+        <h3>Incluye</h3>
+        <p>Acceso al curso</p>
+        <p>Progreso en dashboard</p>
+        <p>Tareas conectadas</p>
+        <p>Perfil publico del instructor</p>
+      </aside>
+    </section>
+
+    @if (reviews().length > 0) {
+      <section class="reviews-section">
+        <div class="reviews-header">
+          <div class="reviews-average">
+            <div class="average-stars">
+              @for (star of [1, 2, 3, 4, 5]; track star) {
+                <span class="avg-star" [class.filled]="star <= promedioRating()">&#9733;</span>
+              }
+            </div>
+            <div class="average-info">
+              <span class="average-number">{{ promedioRating().toFixed(1) }}</span>
+              <span class="average-count">({{ reviews().length }} comentarios)</span>
+            </div>
+          </div>
+        </div>
+        <h2>Comentarios</h2>
+        <div class="reviews-list">
+          @for (review of reviews(); track review.usuario_id) {
+            <article class="review-card">
+              <div class="review-header">
+                <span class="review-author">{{ review.usuario_nombre }}</span>
+                <span class="review-stars">
+                  @for (star of [1, 2, 3, 4, 5]; track star) {
+                    <span class="review-star" [class.filled]="star <= review.rating">&#9733;</span>
+                  }
+                </span>
+              </div>
+              @if (review.comment) {
+                <p class="review-comment">{{ review.comment }}</p>
+              }
+            </article>
+          }
+        </div>
+      </section>
+    }
+  } @else {
+    <section class="detail-empty">
+      <h1>Curso no disponible</h1>
+      <p>No encontramos este curso publicado en Supabase.</p>
+      <a class="primary-button" routerLink="/catalogo">Volver al catalogo</a>
+    </section>
+  }
+</main>

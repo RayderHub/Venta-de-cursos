@@ -1,0 +1,143 @@
+<app-admin-shell title="Popups y Descuentos">
+  @if (error()) {
+    <div class="form-error">{{ error() }}</div>
+  }
+
+  <section class="section">
+    <div class="section-actions">
+      <h2>Popups / Ventanas emergentes</h2>
+      <button class="btn-primary" (click)="abrirNuevoPopup()">+ Nuevo Popup</button>
+    </div>
+
+    <form class="popup-form" (ngSubmit)="guardarPopup()">
+      <div class="form-grid">
+        <label>
+          <span>Titulo</span>
+          <input [(ngModel)]="popupForm.titulo" name="titulo" placeholder="Oferta del mes" required>
+        </label>
+        <label>
+          <span>Mensaje</span>
+          <input [(ngModel)]="popupForm.mensaje" name="mensaje" placeholder="Texto del aviso...">
+        </label>
+        <label>
+          <span>Imagen</span>
+          <select [(ngModel)]="popupForm.imagen" name="imagen">
+            @for (img of imagenes; track img) {
+              <option [value]="img">{{ img }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>Enlace</span>
+          <input [(ngModel)]="popupForm.enlace" name="enlace" placeholder="/catalogo">
+        </label>
+      </div>
+      <div class="form-foot">
+        <label class="switch" [class.muted]="!popupForm.activo">
+          <input type="checkbox" [(ngModel)]="popupForm.activo" name="activo">
+          <span></span>
+        </label>
+        <span class="switch-label">Popup activo</span>
+        <button class="btn-primary" type="submit">{{ editandoPopup() ? 'Guardar Cambios' : 'Crear Popup' }}</button>
+      </div>
+    </form>
+
+    <div class="data-table">
+      <div class="table-row table-head">
+        <span>Titulo</span>
+        <span>Mensaje</span>
+        <span>Imagen</span>
+        <span>Enlace</span>
+        <span>Activo</span>
+        <span>Acciones</span>
+      </div>
+      @for (popup of popups(); track popup.id) {
+        <div class="table-row">
+          <strong>{{ popup.titulo }}</strong>
+          <span class="muted-text">{{ popup.mensaje || '-' }}</span>
+          <span class="pill-image">{{ popup.imagen }}</span>
+          <span class="muted-text">{{ popup.enlace || '-' }}</span>
+          <span>
+            <label class="switch" [class.muted]="!popup.activo">
+              <input type="checkbox" [checked]="popup.activo" (change)="togglePopup(popup)">
+              <span></span>
+            </label>
+          </span>
+          <span class="row-actions">
+            <button class="edit-button" (click)="abrirEditarPopup(popup)">Editar</button>
+            <button class="danger-button" (click)="eliminarPopup(popup.id)">Eliminar</button>
+          </span>
+        </div>
+      } @if (cargando()) {
+        <div class="loading-inline">
+          <div class="loading-spinner small"></div>
+          <p class="muted padded">Cargando popups...</p>
+        </div>
+      } @else if (popups().length === 0) {
+        <p class="muted padded">No hay popups registrados.</p>
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-actions">
+      <h2>Cupones de descuento</h2>
+      <button class="btn-primary" (click)="abrirNuevoCupon()">+ Nuevo Cupon</button>
+    </div>
+
+    <form class="popup-form" (ngSubmit)="guardarCupon()">
+      <div class="form-grid">
+        <label>
+          <span>Codigo</span>
+          <input [(ngModel)]="cuponForm.codigo" name="codigo" placeholder="SKILL20" required>
+        </label>
+        <label>
+          <span>Descuento (%)</span>
+          <input [(ngModel)]="cuponForm.descuento" name="descuento" type="number" min="1" max="100">
+        </label>
+        <label class="inline-switch">
+          <span>Activo</span>
+          <label class="switch" [class.muted]="!cuponForm.activo">
+            <input type="checkbox" [(ngModel)]="cuponForm.activo" name="activo">
+            <span></span>
+          </label>
+        </label>
+      </div>
+      <div class="form-foot">
+        <button class="btn-primary" type="submit">{{ editandoCupon() ? 'Guardar Cambios' : 'Crear Cupon' }}</button>
+      </div>
+    </form>
+
+    <div class="data-table">
+      <div class="table-row table-head">
+        <span>Codigo</span>
+        <span>Descuento</span>
+        <span>Activo</span>
+        <span>Acciones</span>
+      </div>
+      @for (cupon of cupones(); track cupon.id) {
+        <div class="table-row">
+          <strong class="code-chip">{{ cupon.codigo }}</strong>
+          <span class="discount-pill">{{ cupon.descuento }}%</span>
+          <span>
+            <label class="switch" [class.muted]="!cupon.activo">
+              <input type="checkbox" [checked]="cupon.activo" (change)="toggleCupon(cupon)">
+              <span></span>
+            </label>
+          </span>
+          <span class="row-actions">
+            <button class="edit-button" (click)="abrirEditarCupon(cupon)">Editar</button>
+            <button class="danger-button" (click)="eliminarCupon(cupon.id)">Eliminar</button>
+          </span>
+        </div>
+      } @if (cargando()) {
+        <div class="loading-inline">
+          <div class="loading-spinner small"></div>
+          <p class="muted padded">Cargando cupones...</p>
+        </div>
+      } @else if (cupones().length === 0) {
+        <p class="muted padded">No hay cupones registrados.</p>
+      }
+    </div>
+  </section>
+</app-admin-shell>

@@ -1,0 +1,89 @@
+<app-admin-shell title="Cursos">
+  @if (error()) {
+    <div class="error-message">{{ error() }}</div>
+  }
+
+  <div class="table-actions">
+    <label><span>&#8981;</span><input placeholder="Buscar" (input)="busqueda.set($any($event.target).value)"></label>
+    <button (click)="abrirNuevo()">Nuevo Curso</button>
+  </div>
+
+  <div class="admin-table">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Titulo</th>
+          <th>Profesor</th>
+          <th>Rating</th>
+          <th>Categoria</th>
+          <th>Precio</th>
+          <th>Nivel</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr><td colspan="9"><div class="loading-inline"><div class="loading-spinner small"></div><span>Cargando cursos...</span></div></td></tr>
+        } @else {
+          @for (course of filtered(); track course.id) {
+            <tr>
+              <td>{{ course.id }}</td>
+              <td class="title-column">
+                <div class="course-cell">
+                  <img [src]="imageSrc(course.imagen)" [alt]="course.titulo">
+                  <div>
+                    <strong>{{ course.titulo }}</strong>
+                    <small>{{ course.descripcion || 'Sin descripcion' }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>{{ course.instructor }}</td>
+              <td>
+                <div class="rating-cell">
+                  <strong>{{ ratingStars(course.rating) }}</strong>
+                  <small>{{ course.rating }} / 5 - {{ course.reviews }} reviews</small>
+                </div>
+              </td>
+              <td>{{ course.categoria }}</td>
+              <td>${{ fmt(course.precio) }}</td>
+              <td>{{ course.nivel }}</td>
+              <td><span [class.draft]="course.estado !== 'Publicado'">{{ course.estado }}</span></td>
+              <td class="actions-cell">
+                <button title="Editar curso" (click)="abrirEditar(course)">Editar</button>
+                <button class="danger" title="Eliminar curso" (click)="pedirEliminar(course)">Eliminar</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="9">No hay cursos registrados.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</app-admin-shell>
+
+@if (mostrarForm()) {
+  <app-course-form
+    [curso]="editando()"
+    [professors]="profesores()"
+    [categorias]="categorias()"
+    (save)="guardar($event)"
+    (close)="mostrarForm.set(false)" />
+}
+
+@if (cursoEliminando(); as curso) {
+  <div class="confirm-backdrop" (click)="cancelarEliminar()">
+    <section class="confirm-card" (click)="$event.stopPropagation()">
+      <h2>Eliminar curso</h2>
+      <p>Estas por eliminar <strong>{{ curso.titulo }}</strong>. Esta accion quitara el curso del catalogo y no se puede deshacer.</p>
+      <div class="confirm-actions">
+        <button type="button" class="cancel-delete" (click)="cancelarEliminar()" [disabled]="eliminando()">Cancelar</button>
+        <button type="button" class="confirm-delete" (click)="confirmarEliminar()" [disabled]="eliminando()">
+          {{ eliminando() ? 'Eliminando...' : 'Eliminar curso' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}

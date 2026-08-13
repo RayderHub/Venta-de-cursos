@@ -1,0 +1,17 @@
+{
+  "nombre": "SkillAcademy Wear Promotions",
+  "dispositivo": "Wear OS",
+  "total": 1,
+  "promociones": [
+    {
+      "id": 1,
+      "titulo": "Promocion de Excel Avanzado",
+      "subtitulo": "Promocion activa",
+      "mensaje": "Accede a Excel Avanzado con precio especial y practica dashboards ejecutivos.",
+      "imagen": "green",
+      "enlace": "/catalogo",
+      "estado": "Activo",
+      "tipo": "promocion"
+    }
+  ]
+}

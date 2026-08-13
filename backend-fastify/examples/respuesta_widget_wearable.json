@@ -1,0 +1,11 @@
+{
+  "nombre": "SkillAcademy Wear Progress",
+  "dispositivo": "Smartwatch / Wear OS",
+  "titulo": "Continua tu aprendizaje",
+  "mensaje": "Tienes una tarea pendiente del curso Excel Avanzado.",
+  "curso": "Excel Avanzado",
+  "progreso": 65,
+  "accion": "Ver dashboard",
+  "enlace": "/dashboard#tareas",
+  "estado": "activo"
+}

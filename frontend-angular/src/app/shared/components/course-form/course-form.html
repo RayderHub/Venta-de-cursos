@@ -1,0 +1,87 @@
+<div class="modal-backdrop" (click)="close.emit()">
+  <form class="modal-card" [formGroup]="form" (ngSubmit)="onSubmit()" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <h2>{{ curso() ? 'Editar Curso' : 'Nuevo Curso' }}</h2>
+      <button type="button" class="modal-close" (click)="close.emit()">X</button>
+    </div>
+
+    <div class="form-grid">
+      <label class="full">
+        <span>Titulo</span>
+        <input formControlName="titulo" placeholder="Nombre del curso" maxlength="100">
+      </label>
+
+      <label>
+        <span>Categoria</span>
+        <select formControlName="categoria">
+          @for (categoria of categorias(); track categoria) {
+            <option [value]="categoria" maxlength="50">{{ categoria }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        <span>Nivel</span>
+        <select formControlName="nivel">
+          @for (nivel of niveles; track nivel) {
+            <option [value]="nivel" maxlength="20">{{ nivel }}</option>
+          }
+        </select>
+      </label>
+
+      @if (lockInstructor()) {
+        <div class="locked-field">
+          <span>Profesor</span>
+          <strong><i aria-hidden="true">&#128274;</i>{{ lockedInstructorName() || defaultInstructor() }}</strong>
+          <small>Solo puedes publicar con la cuenta de profesor actual.</small>
+        </div>
+      } @else {
+        <label>
+          <span>Profesor</span>
+          <select formControlName="instructor_id">
+            <option value="">Selecciona un profesor</option>
+            @for (professor of professors(); track professor.id) {
+              <option [value]="professor.id">{{ instructorLabel(professor) }}</option>
+            }
+          </select>
+        </label>
+      }
+
+      <label>
+        <span>Estado</span>
+        <select formControlName="estado">
+          @for (estado of estados; track estado) {
+            <option [value]="estado">{{ estado }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        <span>Precio ($)</span>
+        <input type="number" formControlName="precio" min="0" step="0.01">
+      </label>
+
+      <label>
+        <span>Precio anterior ($)</span>
+        <input type="number" formControlName="old_precio" min="0" step="0.01" placeholder="Opcional">
+      </label>
+
+      <label class="full image-field">
+        <span>Imagen</span>
+        <input type="file" accept="image/*" (change)="onImageFile($event)">
+        <input formControlName="imagen" type="hidden">
+        <img class="image-preview" [src]="imagePreview()" alt="Vista previa del curso">
+      </label>
+
+      <label class="full">
+        <span>Descripcion</span>
+        <textarea formControlName="descripcion" rows="3" placeholder="Descripcion breve del curso"></textarea>
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" (click)="close.emit()">Cancelar</button>
+      <button type="submit" class="btn-primary">{{ curso() ? 'Guardar Cambios' : 'Crear Curso' }}</button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,10 @@
+{
+  "titulo": "Oferta Especial",
+  "mensaje": "20% de descuento en cursos de Excel",
+  "curso": "Excel Avanzado",
+  "categoria": "Productividad",
+  "descuento": "20%",
+  "imagen": "/assets/banners/excel-tv.png",
+  "enlace": "/cursos/excel-avanzado",
+  "estado": "activo"
+}

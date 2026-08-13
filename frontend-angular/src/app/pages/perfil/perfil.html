@@ -1,0 +1,54 @@
+<div class="perfil-shell">
+  <main class="perfil-main">
+    <section class="perfil-card">
+      <div class="perfil-head">
+        <img class="profile-avatar" [src]="avatarUrl() || avatarFallback()" alt="Foto de perfil">
+        <div>
+          <h1>{{ nombre() || 'Mi Perfil' }}</h1>
+          <p class="perfil-email">{{ email() }}</p>
+          <span class="role-pill">{{ roleLabel() }}</span>
+        </div>
+      </div>
+
+      <div class="perfil-fields">
+        <label>
+          <span>Nombre visible para los demas</span>
+          <input [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" placeholder="Tu nombre">
+        </label>
+
+        @if (isTeacher()) {
+          <label>
+            <span>Descripcion del perfil</span>
+            <textarea [ngModel]="bio()" (ngModelChange)="bio.set($event)" rows="4"
+              placeholder="Cuenta a los estudiantes sobre ti y tus cursos. Se ve al entrar a tu perfil publico."></textarea>
+            <small>Esta descripcion la ven otras personas cuando entran a tu perfil.</small>
+          </label>
+        }
+
+        <label>
+          <span>Foto de perfil</span>
+          <div class="avatar-inputs">
+            <input [ngModel]="avatarUrl()" (ngModelChange)="avatarUrl.set($event)"
+              placeholder="Pega un enlace de imagen o sube una desde tu equipo">
+            <label class="upload-button">
+              Subir imagen
+              <input type="file" accept="image/*" (change)="onFile($event)" hidden>
+            </label>
+          </div>
+          <small>Aparece en tu perfil y en el encabezado del sitio.</small>
+        </label>
+
+        @if (error()) {
+          <p class="form-error">{{ error() }}</p>
+        }
+        @if (message()) {
+          <p class="form-success">{{ message() }}</p>
+        }
+
+        <button class="save-button" (click)="guardar()" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando...' : 'Guardar Cambios' }}
+        </button>
+      </div>
+    </section>
+  </main>
+</div>

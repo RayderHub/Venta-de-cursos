@@ -1,0 +1,44 @@
+<div class="admin-shell" [class.compact-shell]="compact()">
+  <aside class="admin-sidebar">
+    <a class="admin-brand" routerLink="/admin/dashboard">
+      <span class="brand-icon">$</span>
+      <span class="brand-label">SkillAcademy</span>
+    </a>
+    <nav>
+      <a routerLink="/admin/dashboard" routerLinkActive="active"><span class="nav-icon">&#8962;</span><span class="nav-label">Dashboard</span></a>
+      <a routerLink="/admin/cursos" routerLinkActive="active"><span class="nav-icon">&#9635;</span><span class="nav-label">Cursos</span></a>
+      <a routerLink="/admin/categorias" routerLinkActive="active"><span class="nav-icon">&#9638;</span><span class="nav-label">Categorias</span></a>
+      <a routerLink="/admin/usuarios" routerLinkActive="active"><span class="nav-icon">&#9776;</span><span class="nav-label">Usuarios</span></a>
+      <a routerLink="/admin/banners" routerLinkActive="active"><span class="nav-icon">&#9633;</span><span class="nav-label">Banners</span></a>
+      <a routerLink="/admin/popups" routerLinkActive="active"><span class="nav-icon">&#9675;</span><span class="nav-label">Popups/Descuentos</span></a>
+      <a routerLink="/admin/lecciones" routerLinkActive="active"><span class="nav-icon">&#9783;</span><span class="nav-label">Lecciones</span></a>
+    </nav>
+  </aside>
+
+  <section class="admin-main">
+    <header class="admin-topbar">
+      <div class="admin-context">
+        <strong>{{ auth.profile()?.full_name || auth.user()?.email || 'Admin' }}</strong>
+        <span>Administrador</span>
+      </div>
+      <div class="profile-menu" [class.open]="menuOpen()">
+        <button class="avatar-button" type="button" (click)="toggleMenu()" aria-label="Abrir menu de perfil">
+          @if (auth.profile()?.avatar_url) {
+            <img [src]="auth.profile()?.avatar_url" alt="Foto de perfil">
+          } @else {
+            <span class="avatar">{{ (auth.profile()?.full_name || auth.user()?.email || 'A').charAt(0).toUpperCase() }}</span>
+          }
+        </button>
+        <div class="profile-dropdown">
+          <a routerLink="/home" (click)="menuOpen.set(false)">Sitio</a>
+          <a routerLink="/perfil" (click)="menuOpen.set(false)">Perfil</a>
+          <button type="button" (click)="salir()">Salir</button>
+        </div>
+      </div>
+    </header>
+    <main class="admin-content">
+      <h1>{{ title() }}</h1>
+      <ng-content />
+    </main>
+  </section>
+</div>

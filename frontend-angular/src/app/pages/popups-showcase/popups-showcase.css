@@ -1,0 +1,8 @@
+.popups-page { position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: center; gap: 40px; min-height: calc(100vh - 62px); background: var(--page-texture); background-attachment: fixed; padding: 80px 10vw; }
+.back-link { position: absolute; top: 28px; left: 38px; color: var(--primary-dark); font-weight: 800; }
+.popup-card { position: relative; min-height: 280px; border: 1px solid #d8e1e6; border-radius: 12px; background: var(--glass-surface); backdrop-filter: blur(18px); box-shadow: 0 18px 42px rgba(17,26,35,.13); padding: 60px 38px 34px; text-align: center; }
+.popup-card.offer { border-color: #60b981; }.popup-card button { position: absolute; top: 20px; right: 24px; border: 0; background: transparent; color: #25313a; font-size: 32px; line-height: 1; cursor: pointer; }
+.popup-card img { width: min(100%, 320px); height: 150px; border-radius: 10px; object-fit: cover; background: #10202b; margin-bottom: 22px; }
+.popup-card h1 { margin-bottom: 24px; font-size: 38px; }.popup-card p { max-width: 470px; margin: 0 auto 36px; font-size: 23px; line-height: 1.35; }
+.popup-card a { display: grid; height: 62px; place-items: center; border-radius: 8px; background: var(--primary); color: #fff; font-size: 22px; font-weight: 900; }
+@media (max-width: 900px){.popups-page{grid-template-columns:1fr;gap:40px;padding:80px 24px}}

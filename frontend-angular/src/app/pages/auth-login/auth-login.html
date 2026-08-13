@@ -1,0 +1,51 @@
+<main class="auth-page">
+  <a class="back-home" routerLink="/home" aria-label="Volver al inicio">←</a>
+  <section class="auth-card login-card">
+    <h1>Iniciar sesión</h1>
+    
+    @if (error()) {
+      <div class="error-message" style="color: #8a2f21; margin-bottom: 16px; padding: 12px; background: #fef2f2; border-radius: 8px; font-size: 14px;">
+        {{ error() }}
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <label>
+        <span>Email</span>
+        <input type="email" formControlName="email" placeholder="Email" [class.error]="form.controls.email.invalid && form.controls.email.touched">
+        @if (form.controls.email.invalid && form.controls.email.touched) {
+          <span class="field-error">{{ emailError() }}</span>
+        }
+      </label>
+      
+      <label>
+        <span>Contraseña</span>
+        <input type="password" formControlName="password" placeholder="Contraseña" [class.error]="form.controls.password.invalid && form.controls.password.touched">
+        @if (form.controls.password.invalid && form.controls.password.touched) {
+          <span class="field-error">{{ passwordError() }}</span>
+        }
+      </label>
+
+      <label class="remember-row">
+        <input type="checkbox" formControlName="remember">
+        <span>Recordarme</span>
+      </label>
+
+      <a class="forgot-link" href="#">¿Olvidaste tu contraseña?</a>
+      
+      <button type="submit" class="submit-button" [disabled]="loading() || form.invalid">
+        @if (loading()) {
+          <span class="spinner"></span> Entrando...
+        } @else {
+          Iniciar Sesión
+        }
+      </button>
+    </form>
+
+    <div class="divider"><span>o</span></div>
+    <button class="social-wide" disabled>G Continuar con Google</button>
+    <div class="social-pair"><button disabled>G Google</button><button disabled>● Apple</button></div>
+    
+    <p>¿No tienes cuenta? <a routerLink="/registro">Registrarse</a></p>
+  </section>
+</main>

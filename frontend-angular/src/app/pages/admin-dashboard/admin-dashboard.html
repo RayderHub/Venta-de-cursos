@@ -1,0 +1,140 @@
+<app-admin-shell title="Overview">
+  @if (cargando()) {
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Cargando metricas...</p>
+    </div>
+  } @else {
+    <section class="metric-grid">
+      <article><span>Total Usuarios</span><strong>{{ metricas().usuarios }}</strong><i>USR</i><div><b [style.width.%]="bar(metricas().usuarios)"></b></div></article>
+      <article><span>Cursos</span><strong>{{ metricas().cursos }}</strong><i>CRS</i><div><b [style.width.%]="bar(metricas().cursos)"></b></div></article>
+      <article><span>Inscripciones</span><strong>{{ metricas().inscripciones }}</strong><i>INS</i><div><b [style.width.%]="bar(metricas().inscripciones)"></b></div></article>
+      <article><span>Banners Activos</span><strong>{{ metricas().bannersActivos }}</strong><i>BNR</i><div><b [style.width.%]="bar(metricas().bannersActivos)"></b></div></article>
+    </section>
+
+    <section class="admin-dashboard-grid">
+      <article class="chart-card">
+        <h2>Resumen del sistema</h2>
+        <div class="system-list">
+          <p><strong>Usuarios registrados</strong><span>{{ metricas().usuarios }}</span></p>
+          <p><strong>Cursos publicados</strong><span>{{ metricas().cursos }}</span></p>
+          <p><strong>Inscripciones totales</strong><span>{{ metricas().inscripciones }}</span></p>
+          <p><strong>Banners activos</strong><span>{{ metricas().bannersActivos }}</span></p>
+        </div>
+      </article>
+      <aside class="activity-card">
+        <h2>Ultima actividad</h2>
+        @if (actividad().length === 0) {
+          <p class="muted">Aun no hay inscripciones recientes.</p>
+        }
+        @for (item of actividad(); track item.email + item.curso) {
+          <p>
+            <span class="activity-avatar">{{ item.nombre.charAt(0).toUpperCase() }}</span>
+            <strong>{{ item.nombre }}</strong>
+            <small>{{ item.email }} - {{ item.curso }} - {{ item.progreso }}%</small>
+          </p>
+        }
+      </aside>
+    </section>
+
+    <section class="wearable-admin-card">
+      <div>
+        <h2>Smartwatch wearable</h2>
+        <p class="muted">Configura el aviso corto que aparece en el endpoint <code>/api/widget/wearable</code>.</p>
+      </div>
+
+      @if (wearable(); as widget) {
+        <div class="wearable-admin-grid">
+          <label>
+            <span>Curso asociado</span>
+            <select (change)="selectWearableCourse($any($event.target).value)">
+              <option value="">Selecciona un curso</option>
+              @for (curso of cursos(); track curso.id) {
+                <option [value]="curso.id" [selected]="curso.titulo === widget.curso">{{ curso.titulo }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            <span>Titulo</span>
+            <input [value]="widget.titulo" (input)="updateWearableField('titulo', $any($event.target).value)">
+          </label>
+          <label class="wide">
+            <span>Mensaje</span>
+            <textarea rows="3" [value]="widget.mensaje" (input)="updateWearableField('mensaje', $any($event.target).value)"></textarea>
+          </label>
+          <label>
+            <span>Progreso</span>
+            <input type="number" min="0" max="100" [value]="widget.progreso" (input)="updateWearableField('progreso', $any($event.target).value)">
+          </label>
+          <label>
+            <span>Estado</span>
+            <select [value]="widget.estado" (change)="updateWearableField('estado', $any($event.target).value)">
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </label>
+        </div>
+        <div class="wearable-preview">
+          <span>SA</span>
+          <strong>{{ widget.titulo }}</strong>
+          <p>{{ widget.mensaje }}</p>
+          <div><b [style.width.%]="widget.progreso"></b></div>
+        </div>
+        <button class="save-widget-button" type="button" (click)="guardarWearable()">Guardar widget</button>
+        @if (wearableStatus()) {
+          <p class="muted">{{ wearableStatus() }}</p>
+        }
+      } @else {
+        <p class="muted">No se pudo cargar el widget. Revisa que Fastify este encendido.</p>
+      }
+    </section>
+
+    <section class="analytics-card">
+      <div class="analytics-header">
+        <h2>Analiticas del sitio</h2>
+        <span class="analytics-badge">Google Analytics</span>
+      </div>
+      <p class="muted">Visualiza las metricas de trafico y comportamiento de los visitantes. Conecta tu cuenta de Google Analytics para obtener datos en tiempo real.</p>
+
+      <div class="analytics-metrics">
+        <div class="analytics-metric">
+          <span class="metric-label">Visitantes hoy</span>
+          <strong class="metric-value">{{ analytics().visitantesHoy }}</strong>
+          <span class="metric-change" [class.positive]="analytics().visitantesChange >= 0">
+            {{ analytics().visitantesChange >= 0 ? '+' : '' }}{{ analytics().visitantesChange }}%
+          </span>
+        </div>
+        <div class="analytics-metric">
+          <span class="metric-label">Paginas vistas</span>
+          <strong class="metric-value">{{ analytics().paginasVistas }}</strong>
+          <span class="metric-change" [class.positive]="analytics().paginasChange >= 0">
+            {{ analytics().paginasChange >= 0 ? '+' : '' }}{{ analytics().paginasChange }}%
+          </span>
+        </div>
+        <div class="analytics-metric">
+          <span class="metric-label">Sesiones</span>
+          <strong class="metric-value">{{ analytics().sesiones }}</strong>
+          <span class="metric-change" [class.positive]="analytics().sesionesChange >= 0">
+            {{ analytics().sesionesChange >= 0 ? '+' : '' }}{{ analytics().sesionesChange }}%
+          </span>
+        </div>
+        <div class="analytics-metric">
+          <span class="metric-label">Tasa de rebote</span>
+          <strong class="metric-value">{{ analytics().tasaRebote }}%</strong>
+          <span class="metric-change" [class.positive]="analytics().reboteChange <= 0">
+            {{ analytics().reboteChange >= 0 ? '+' : '' }}{{ analytics().reboteChange }}%
+          </span>
+        </div>
+      </div>
+
+      <div class="analytics-setup">
+        <h3>Configurar Google Analytics</h3>
+        <p>Para habilitar las analiticas en tiempo real, agrega tu ID de medicion de Google Analytics (formato <code>G-XXXXXXXXXX</code>) en el archivo <code>index.html</code> del proyecto.</p>
+        <div class="analytics-code-block">
+          <code>&lt;script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"&gt;&lt;/script&gt;</code>
+        </div>
+        <p class="muted">Una vez configurado, las visitas al sitio se registraran automaticamente y podras consultar reportes detallados en <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer">analytics.google.com</a>.</p>
+      </div>
+    </section>
+  }
+</app-admin-shell>

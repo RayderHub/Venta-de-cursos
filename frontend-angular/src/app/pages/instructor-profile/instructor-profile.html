@@ -1,0 +1,58 @@
+<app-public-header />
+
+<main class="instructor-main">
+  @if (cargando()) {
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Cargando perfil...</p>
+    </div>
+  } @else if (noExiste()) {
+    <section class="empty-state">
+      <h2>Perfil no encontrado</h2>
+      <p>Este instructor no tiene cursos publicados o el perfil no existe.</p>
+      <a routerLink="/catalogo">Ver Catalogo de Cursos</a>
+    </section>
+  } @else {
+    @if (perfil(); as perfil) {
+      <section class="profile-hero">
+        <img class="profile-avatar" [src]="perfil.avatar_url || avatarFallback()" [alt]="perfil.full_name ?? 'Instructor'">
+        <div>
+          <span class="role-pill">Profesor</span>
+          <h1>{{ perfil.full_name || perfil.email }}</h1>
+          @if (perfil.bio) {
+            <p class="profile-bio">{{ perfil.bio }}</p>
+          } @else {
+            <p class="profile-bio muted">Este profesor aun no agrega una descripcion.</p>
+          }
+          <span class="courses-count">{{ courses().length }} curso{{ courses().length === 1 ? '' : 's' }} publicados</span>
+          @if (profesorRating() > 0) {
+            <div class="profesor-rating">
+              <div class="profesor-stars">
+                @for (star of [1, 2, 3, 4, 5]; track star) {
+                  <span class="prof-star" [class.filled]="star <= profesorRating()">&#9733;</span>
+                }
+              </div>
+              <span class="profesor-rating-number">{{ profesorRating().toFixed(1) }}</span>
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="courses-section">
+        <div class="section-head">
+          <h2>Cursos Publicados</h2>
+        </div>
+
+        @if (courses().length === 0) {
+          <p class="notice">Todavia no hay cursos publicados por este instructor.</p>
+        } @else {
+          <div class="course-grid">
+            @for (course of courses(); track course.id) {
+              <app-course-card [course]="course" />
+            }
+          </div>
+        }
+      </section>
+    }
+  }
+</main>

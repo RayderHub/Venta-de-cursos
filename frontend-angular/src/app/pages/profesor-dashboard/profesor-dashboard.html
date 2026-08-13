@@ -1,0 +1,497 @@
+<div class="teacher-shell">
+  <aside class="teacher-sidebar">
+    <a class="teacher-brand" routerLink="/home"><span>$</span><span class="brand-text">SkillAcademy</span></a>
+    <nav>
+      <a [class.active]="tab() === 'panel'" (click)="setTab('panel')"><span class="nav-icon">&#8962;</span><span class="nav-label">Panel</span></a>
+      <a [class.active]="tab() === 'cursos'" (click)="setTab('cursos')"><span class="nav-icon">&#9635;</span><span class="nav-label">Registro de Cursos</span></a>
+      <a [class.active]="tab() === 'lecciones'" (click)="setTab('lecciones')"><span class="nav-icon">&#9783;</span><span class="nav-label">Lecciones</span></a>
+      <a [class.active]="tab() === 'tareas'" (click)="setTab('tareas')"><span class="nav-icon">&#8599;</span><span class="nav-label">Tareas por Curso</span></a>
+      <a [class.active]="tab() === 'alumnos'" (click)="setTab('alumnos')"><span class="nav-icon">&#9776;</span><span class="nav-label">Mis Alumnos</span></a>
+    </nav>
+  </aside>
+
+    <section class="teacher-main">
+      <header class="teacher-topbar">
+        @if (profesorRating() > 0) {
+          <div class="teacher-rating">
+            <div class="teacher-stars">
+              @for (star of [1, 2, 3, 4, 5]; track star) {
+                <span class="t-star" [class.filled]="star <= profesorRating()">&#9733;</span>
+              }
+            </div>
+            <span class="teacher-rating-number">{{ profesorRating().toFixed(1) }}</span>
+          </div>
+        }
+        <div class="profile-menu">
+        <button class="profile-button" type="button" (click)="profileMenuOpen.set(!profileMenuOpen())" aria-label="Opciones de perfil">
+          @if (avatarUrl()) {
+            <img class="top-avatar" [src]="avatarUrl()" alt="Foto de perfil">
+          } @else {
+            <span class="avatar">{{ teacherName().charAt(0).toUpperCase() }}</span>
+          }
+        </button>
+        @if (profileMenuOpen()) {
+          <div class="profile-dropdown">
+            <a routerLink="/perfil">Mi perfil</a>
+            @if (perfilUrl()) {
+              <a [routerLink]="perfilUrl()">Ver perfil publico</a>
+            }
+            <button type="button" (click)="salir()">Salir</button>
+          </div>
+        }
+      </div>
+    </header>
+
+    <main class="teacher-content">
+      <div class="welcome-banner">
+        <div>
+          <h1>Hola, {{ teacherName() }}</h1>
+          <p>Publica y administra tus cursos, tareas y estudiantes.</p>
+        </div>
+        <button class="btn-primary" (click)="nuevoCurso()">Nuevo Curso</button>
+      </div>
+
+      @if (error()) {
+        <div class="error-message">{{ error() }}</div>
+      }
+
+      @if (cargando()) {
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>Cargando panel...</p>
+        </div>
+      } @else {
+        @if (tab() === 'panel') {
+          <section class="metric-grid">
+            @for (metric of metrics(); track metric.label) {
+              <article>
+                <i>&#9635;</i>
+                <strong>{{ metric.value }}</strong>
+                <span>{{ metric.label }}</span>
+              </article>
+            }
+          </section>
+
+          <section class="panel-grid">
+            <article class="panel-card">
+              <div class="card-head">
+                <h2>Mis Cursos</h2>
+                <button type="button" (click)="setTab('cursos')">Ver todos</button>
+              </div>
+              @for (curso of misCursos().slice(0, 3); track curso.id) {
+                <div class="panel-course">
+                  <img [src]="imageSrc(curso.imagen)" [alt]="curso.titulo">
+                  <div>
+                    <strong>{{ curso.titulo }}</strong>
+                    <small>{{ curso.categoria }} - {{ curso.estado }}</small>
+                  </div>
+                  <span class="pill" [class.draft]="curso.estado !== 'Publicado'">{{ curso.estado }}</span>
+                </div>
+              } @empty {
+                <p class="muted">Aun no tienes cursos. Crea el primero.</p>
+              }
+            </article>
+
+            <article class="panel-card">
+              <div class="card-head">
+                <h2>Alumnos del curso activo</h2>
+                <button type="button" (click)="setTab('alumnos')">Ver alumnos</button>
+              </div>
+              @for (alumno of alumnos().slice(0, 3); track alumno.usuario_id) {
+                <div class="panel-student">
+                  <span class="avatar-letter">
+                    @if (alumno.avatar_url) {
+                      <img [src]="alumno.avatar_url" [alt]="alumno.nombre">
+                    } @else {
+                      {{ alumno.nombre.charAt(0).toUpperCase() }}
+                    }
+                  </span>
+                  <div>
+                    <strong>{{ alumno.nombre }}</strong>
+                    <small>{{ alumno.email }}</small>
+                  </div>
+                  <strong class="student-progress">{{ alumno.progreso }}%</strong>
+                </div>
+              } @empty {
+                <p class="muted">Aun no hay inscritos en tus cursos.</p>
+              }
+            </article>
+          </section>
+        }
+
+        @if (tab() === 'cursos') {
+          <div class="section-actions">
+            <h2>Registro de Cursos</h2>
+            <button class="btn-primary" (click)="abrirNuevoCurso()">Nuevo Curso</button>
+          </div>
+          <section class="courses-card">
+            <div class="course-table">
+              @for (curso of filteredCursos(); track curso.id) {
+                <div class="course-row" (click)="abrirModalActividades(curso)" role="button" tabindex="0" (keydown.enter)="abrirModalActividades(curso)">
+                  <img class="row-thumb" [src]="imageSrc(curso.imagen)" [alt]="curso.titulo">
+                  <div class="course-title">
+                    <strong>{{ curso.titulo }}</strong>
+                    <small>{{ curso.categoria }} - {{ curso.nivel }}</small>
+                  </div>
+                  <div class="course-cell">${{ fmt(curso.precio) }}</div>
+                  <div class="course-cell">{{ curso.students ?? 0 }} alumnos</div>
+                  <div class="course-status"><span [class.draft]="curso.estado !== 'Publicado'">{{ curso.estado }}</span></div>
+                  <div class="row-actions">
+                    <button class="edit-button" (click)="$event.stopPropagation(); abrirEditarCurso(curso)">Editar</button>
+                    <button class="danger-button" (click)="$event.stopPropagation(); pedirEliminarCurso(curso)">Eliminar</button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="muted padded">No hay cursos que coincidan. Crea o ajusta la busqueda.</p>
+              }
+            </div>
+          </section>
+        }
+
+        @if (tab() === 'lecciones') {
+          <div class="section-actions">
+            <h2>Lecciones de tus Cursos</h2>
+          </div>
+          <section class="courses-card">
+            <app-lesson-builder [cursos]="misCursos().map((curso) => ({ id: curso.id, titulo: curso.titulo, categoria: curso.categoria, nivel: curso.nivel }))" />
+          </section>
+        }
+
+        @if (tab() === 'tareas') {
+          <div class="section-actions">
+            <h2>Tareas por Curso</h2>
+            <button class="btn-primary" (click)="abrirNuevaTarea()">Nueva Tarea</button>
+          </div>
+          <section class="courses-card">
+            <div class="task-list">
+              @for (tarea of tareas(); track tarea.id) {
+                <article class="task-row" [class.expanded]="tareaExpandida() === tarea.id">
+                  <button class="task-check" [class.done]="tarea.estado === 'Completada'" (click)="estadoTarea(tarea)">OK</button>
+                  <div class="task-info" (click)="toggleTarea(tarea)">
+                    <strong [class.done]="tarea.estado === 'Completada'">{{ tarea.titulo }}</strong>
+                    <small>{{ tarea.curso }} - {{ tarea.fecha }}</small>
+                  </div>
+                  <span class="pill prio-{{ tarea.prioridad.toLowerCase() }}">{{ tarea.prioridad }}</span>
+                  <span class="pill" [class.draft]="tarea.estado !== 'Completada'">{{ tarea.estado }}</span>
+                  <div class="mini-progress"><span [style.width.%]="tarea.progreso"></span></div>
+                  <div class="row-actions">
+                    <button class="edit-button" (click)="abrirEditarTarea(tarea)">Editar</button>
+                    <button class="danger-button" (click)="eliminarTarea(tarea.id)">Eliminar</button>
+                  </div>
+
+                  @if (tareaExpandida() === tarea.id) {
+                    <div class="task-content">
+                      <div class="task-content-head">
+                        <h4>Contenido de la tarea</h4>
+                        <span class="expand-icon">▲</span>
+                      </div>
+
+                      @if (contenidoTarea().length > 0) {
+                        <div class="task-blocks">
+                          @for (contenido of contenidoTarea(); track contenido.id) {
+                            <div class="task-block">
+                              <div class="task-block-head">
+                                <span class="block-type-badge">{{ getIconoTipoContenidoTarea(contenido.tipo) }}</span>
+                                <span class="block-type-label">{{ getTipoContenidoEtiqueta(contenido.tipo) }}</span>
+                              </div>
+                              <div class="task-block-body">
+                                @switch (contenido.tipo) {
+                                  @case ('titulo') {
+                                    <h3 class="task-block-titulo">{{ contenido.contenido }}</h3>
+                                  }
+                                  @case ('texto') {
+                                    <p class="task-block-texto">{{ contenido.contenido }}</p>
+                                  }
+                                  @case ('opcion_multiple') {
+                                    @if (getTituloContenidoTarea(contenido); as titulo) {
+                                      <strong class="task-block-pregunta">{{ titulo }}</strong>
+                                    }
+                                    @for (opcion of parseContenidoTarea(contenido.contenido).opciones; track $index) {
+                                      <div class="task-option" [class.correct]="parseContenidoTarea(contenido.contenido).respuesta_correcta === opcion">
+                                        <span class="task-option-mark">{{ parseContenidoTarea(contenido.contenido).respuesta_correcta === opcion ? '✓' : '·' }}</span>
+                                        {{ opcion }}
+                                      </div>
+                                    }
+                                  }
+                                  @case ('respuesta_texto') {
+                                    <strong class="task-block-pregunta">{{ contenido.contenido }}</strong>
+                                    <div class="task-answer-box">Respuesta en texto</div>
+                                  }
+                                }
+                              </div>
+                              <div class="task-block-actions">
+                                <button class="side-btn edit" (click)="abrirEditarContenidoTarea(contenido)" title="Editar bloque">Editar</button>
+                                <button class="side-btn delete" (click)="pedirEliminarContenidoTarea(contenido)" title="Eliminar bloque">Eliminar</button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <p class="muted padded">Sin contenido aun. Agrega bloques con los botones de abajo.</p>
+                      }
+
+                      <div class="task-add-toolbar">
+                        <span class="toolbar-label">Agregar contenido:</span>
+                        @for (tipo of tiposContenidoTarea; track tipo.valor) {
+                          <button class="add-block-btn" (click)="abrirAgregarContenidoTarea(tipo.valor)">
+                            <span class="btn-icon">{{ tipo.icono }}</span>
+                            {{ tipo.etiqueta }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </article>
+              } @empty {
+                <p class="muted padded">No hay tareas registradas.</p>
+              }
+            </div>
+          </section>
+        }
+
+        @if (tab() === 'alumnos') {
+          <div class="section-actions">
+            <h2>Mis Alumnos</h2>
+            <select class="course-select" [ngModel]="cursoAlumnosId() ?? ''" (ngModelChange)="verAlumnos($event)">
+              @for (curso of misCursos(); track curso.id) {
+                <option [ngValue]="curso.id">{{ curso.titulo }}</option>
+              }
+            </select>
+          </div>
+          <section class="courses-card">
+            <div class="students-grid">
+              @for (alumno of alumnos(); track alumno.usuario_id) {
+                <article class="student-card" (click)="verPerfilAlumno(alumno)">
+                  <div class="student-card-avatar">
+                    @if (alumno.avatar_url) {
+                      <img [src]="alumno.avatar_url" [alt]="alumno.nombre">
+                    } @else {
+                      {{ alumno.nombre.charAt(0).toUpperCase() }}
+                    }
+                  </div>
+                  <h3 class="student-card-name">{{ alumno.nombre }}</h3>
+                  <p class="student-card-email">{{ alumno.email }}</p>
+                  <div class="student-card-progress">
+                    <span>Progreso</span>
+                    <strong>{{ alumno.progreso }}%</strong>
+                  </div>
+                </article>
+              } @empty {
+                <p class="muted padded">No hay estudiantes inscritos en este curso.</p>
+              }
+            </div>
+          </section>
+        }
+      }
+    </main>
+  </section>
+</div>
+
+@if (mostrarCursoForm()) {
+  <app-course-form
+    [curso]="cursoEditando()"
+    [defaultInstructor]="teacherName()"
+    [lockedInstructorName]="teacherName()"
+    [lockedInstructorId]="teacherId()"
+    [lockInstructor]="true"
+    [categorias]="categorias()"
+    (save)="guardarCurso($event)"
+    (close)="mostrarCursoForm.set(false)" />
+}
+
+@if (mostrarTareaForm()) {
+  <app-tarea-form [tarea]="tareaEditando()" [cursos]="misCursos().map((curso) => ({ id: curso.id, titulo: curso.titulo }))" [guardando]="guardandoTarea()" (save)="guardarTarea($event)" (close)="mostrarTareaForm.set(false)" />
+}
+
+@if (cursoEliminando(); as curso) {
+  <div class="confirm-backdrop" (click)="cancelarEliminarCurso()">
+    <section class="confirm-card" (click)="$event.stopPropagation()">
+      <h2>Eliminar curso</h2>
+      <p>Estas por eliminar <strong>{{ curso.titulo }}</strong>. Esta accion quitara el curso de tu registro.</p>
+      <div class="confirm-actions">
+        <button type="button" class="cancel-delete" (click)="cancelarEliminarCurso()" [disabled]="eliminandoCurso()">Cancelar</button>
+        <button type="button" class="confirm-delete" (click)="confirmarEliminarCurso()" [disabled]="eliminandoCurso()">
+          {{ eliminandoCurso() ? 'Eliminando...' : 'Eliminar curso' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
+@if (alumnoPerfil(); as alumno) {
+  <div class="modal-overlay" (click)="cerrarPerfilAlumno()">
+    <div class="modal-content small" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Perfil del estudiante</h2>
+        <button class="modal-close" type="button" (click)="cerrarPerfilAlumno()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="alumno-perfil">
+          @if (alumno.avatar_url) {
+            <img class="alumno-avatar-img" [src]="alumno.avatar_url" [alt]="alumno.nombre">
+          } @else {
+            <div class="alumno-avatar">{{ alumno.nombre.charAt(0).toUpperCase() }}</div>
+          }
+          <h3 class="alumno-nombre">{{ alumno.nombre }}</h3>
+          <p class="alumno-email">{{ alumno.email }}</p>
+          <span class="alumno-rol">Estudiante</span>
+        </div>
+        @if (cursosAlumno().length > 0) {
+          <div class="alumno-cursos">
+            <h4>Calificaciones en tus cursos</h4>
+            @for (curso of cursosAlumno(); track curso.id) {
+              <div class="alumno-curso-item">
+                <span class="alumno-curso-titulo">{{ curso.titulo }}</span>
+                @if (curso.rating > 0) {
+                  <span class="alumno-curso-rating">
+                    @for (star of [1, 2, 3, 4, 5]; track star) {
+                      <span class="alumno-star" [class.filled]="star <= curso.rating">&#9733;</span>
+                    }
+                    <span class="alumno-rating-num">{{ curso.rating }}</span>
+                  </span>
+                } @else {
+                  <span class="alumno-sin-calificar">Sin calificar</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+@if (modalContenidoTipo(); as tipo) {
+  <div class="modal-overlay" (click)="cerrarModalContenidoTarea()">
+    <div class="modal-content small" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>{{ modalContenidoEditar() ? 'Editar' : 'Agregar' }} {{ getTipoContenidoEtiqueta(tipo) }}</h2>
+        <button class="modal-close" type="button" (click)="cerrarModalContenidoTarea()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        @switch (tipo) {
+          @case ('titulo') {
+            <div class="modal-field">
+              <label>Titulo de la seccion</label>
+              <input type="text" [(ngModel)]="modalContenidoTitulo" placeholder="Escribe el titulo..." maxlength="100" autofocus>
+            </div>
+          }
+          @case ('texto') {
+            <div class="modal-field">
+              <label>Contenido de texto</label>
+              <textarea [(ngModel)]="modalContenidoTexto" rows="6" placeholder="Escribe aqui el contenido..." maxlength="2000"></textarea>
+            </div>
+          }
+          @case ('opcion_multiple') {
+            <div class="modal-field">
+              <label>Pregunta</label>
+              <input type="text" [(ngModel)]="modalContenidoTitulo" placeholder="Escribe la pregunta..." maxlength="200">
+            </div>
+            <div class="modal-field">
+              <label>Opciones</label>
+              @for (opcion of modalContenidoOpciones(); track $index; let i = $index) {
+                <div class="opcion-multiple-row">
+                  <input type="text" [value]="getOpcionMultiple(i)" (input)="setOpcionMultiple(i, $any($event.target).value)" placeholder="Opcion {{ i + 1 }}" maxlength="200">
+                  <label class="opcion-correcta">
+                    <input type="radio" name="respuestaCorrecta" [value]="getOpcionMultiple(i)" [checked]="modalContenidoRespuestaCorrecta() === getOpcionMultiple(i)" (change)="modalContenidoRespuestaCorrecta.set(getOpcionMultiple(i))">
+                    Correcta
+                  </label>
+                  @if (modalContenidoOpciones().length > 2) {
+                    <button type="button" class="remove-campo-btn" (click)="quitarOpcionMultiple(i)">X</button>
+                  }
+                </div>
+              }
+              <div class="opcion-nueva-row">
+                <input type="text" [(ngModel)]="modalContenidoNuevaOpcion" placeholder="Nueva opcion..." maxlength="200" (keydown.enter)="onNuevaOpcionEnter(); $event.preventDefault()">
+                <button type="button" class="add-campo-btn" (click)="onNuevaOpcionEnter()">+ Agregar</button>
+              </div>
+              @if (modalContenidoOpciones().length < 2) {
+                <small class="field-error">Agrega al menos 2 opciones.</small>
+              }
+              @if (!modalContenidoRespuestaCorrecta()) {
+                <small class="field-error">Marca la respuesta correcta.</small>
+              }
+            </div>
+          }
+          @case ('respuesta_texto') {
+            <div class="modal-field">
+              <label>Pregunta</label>
+              <input type="text" [(ngModel)]="modalContenidoTexto" placeholder="Escribe la pregunta..." maxlength="200" autofocus>
+            </div>
+            <div class="modal-field">
+              <label>Preview de respuesta</label>
+              <div class="task-answer-box">Respuesta en texto</div>
+            </div>
+          }
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn-cancel" (click)="cerrarModalContenidoTarea()">Cancelar</button>
+        <button type="button" class="modal-btn-save" (click)="guardarContenidoTarea()" [disabled]="guardandoContenido()">
+          {{ guardandoContenido() ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (contenidoEliminando(); as contenido) {
+  <div class="modal-overlay" (click)="cancelarEliminarContenidoTarea()">
+    <div class="modal-content small" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Eliminar contenido</h2>
+        <button class="modal-close" type="button" (click)="cancelarEliminarContenidoTarea()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Estas por eliminar un bloque de <strong>{{ getTipoContenidoEtiqueta(contenido.tipo) }}</strong>.</p>
+        <p class="muted">Esta accion no se puede deshacer.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn-cancel" (click)="cancelarEliminarContenidoTarea()">Cancelar</button>
+        <button type="button" class="modal-btn-delete" (click)="confirmarEliminarContenidoTarea()" [disabled]="guardandoContenido()">
+          {{ guardandoContenido() ? 'Eliminando...' : 'Eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (modalActividadesCurso(); as curso) {
+  <div class="modal-overlay" (click)="cerrarModalActividades()">
+    <div class="modal-content orden-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Orden de {{ curso.titulo }}</h2>
+        <button class="modal-close" type="button" (click)="cerrarModalActividades()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="orden-hint">Arrastra o usa las flechas para ordenar lecciones y tareas. El alumno avanzara en este orden y no podra saltarse una tarea sin completarla.</p>
+        <div class="orden-list">
+          @for (actividad of actividades(); track actividad.tipo + '-' + actividad.item_id; let i = $index) {
+            <div class="orden-item" [class.tarea]="actividad.tipo === 'tarea'">
+              <span class="orden-num">{{ actividad.posicion }}</span>
+              <div class="orden-info">
+                <strong>{{ actividad.titulo }}</strong>
+                <small>{{ actividad.subtitulo }}</small>
+              </div>
+              <div class="orden-actions">
+                <button type="button" class="orden-btn" (click)="subirActividad(i)" [disabled]="i === 0" aria-label="Subir">&#9650;</button>
+                <button type="button" class="orden-btn" (click)="bajarActividad(i)" [disabled]="i === actividades().length - 1" aria-label="Bajar">&#9660;</button>
+              </div>
+            </div>
+          } @empty {
+            <p class="muted padded">Este curso aun no tiene lecciones ni tareas.</p>
+          }
+        </div>
+        @if (error()) {
+          <p class="field-error">{{ error() }}</p>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn-cancel" (click)="cerrarModalActividades()">Cancelar</button>
+        <button type="button" class="modal-btn-save" (click)="guardarOrdenActividades()" [disabled]="guardandoOrden() || actividades().length === 0">
+          {{ guardandoOrden() ? 'Guardando...' : 'Guardar orden' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

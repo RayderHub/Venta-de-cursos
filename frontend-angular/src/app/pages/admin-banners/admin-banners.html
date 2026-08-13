@@ -1,0 +1,57 @@
+<app-admin-shell title="Banners" [compact]="true">
+  @if (error()) {
+    <div class="error-message">{{ error() }}</div>
+  }
+
+  <div class="banner-top"><button (click)="cancelarEdicion()">Nuevo Banner</button></div>
+
+  <section class="banner-layout">
+    <div class="banner-table">
+      <div class="banner-head"><strong>Vista previa</strong><strong>Titulo</strong><strong>Estado</strong><strong>Acciones</strong></div>
+
+      @if (cargando()) {
+        <div class="banner-row"><div class="loading-inline"><div class="loading-spinner small"></div><span>Cargando banners...</span></div></div>
+      } @else {
+        @for (banner of banners(); track banner.id) {
+          <article class="banner-row">
+            <img class="banner-preview" [src]="imagenUrl(banner.imagen)" [alt]="banner.titulo">
+            <div><h2>{{ banner.titulo }}</h2><p>{{ banner.subtitulo }}</p><small>{{ banner.descripcion || 'Sin descripcion larga' }}</small></div>
+            <label class="switch" [class.muted]="banner.estado === 'Inactivo'">
+              <input type="checkbox" [checked]="banner.estado === 'Activo'" (change)="cambiarEstado(banner)">
+              <span></span>
+            </label>
+            <div class="row-actions">
+              <button title="Editar" (click)="editar(banner)">Editar</button>
+              <button title="Eliminar" (click)="eliminar(banner.id)">Eliminar</button>
+            </div>
+          </article>
+        } @empty {
+          <div class="banner-row">No hay banners. Crea uno nuevo.</div>
+        }
+      }
+    </div>
+
+    <aside class="banner-form">
+      <h2>{{ editando() ? 'Editar Banner' : 'Crear Nuevo Banner' }}</h2>
+      <label>Titulo del Banner<input [(ngModel)]="form.titulo" placeholder="Titulo"></label>
+      <label>Subtitulo<input [(ngModel)]="form.subtitulo" placeholder="Subtitulo"></label>
+      <label>Descripcion de la promocion<textarea [(ngModel)]="form.descripcion" rows="4" placeholder="Detalle largo que se vera al abrir la promocion"></textarea></label>
+      <label>Estilo de imagen
+        <select [(ngModel)]="form.imagen">
+          @for (imagen of imagenes; track imagen) {
+            <option [value]="imagen">{{ imagen }}</option>
+          }
+        </select>
+      </label>
+      <label>Enlace<input [(ngModel)]="form.enlace" placeholder="/catalogo"></label>
+      <div class="form-state">
+        <strong>Estado</strong>
+        <label class="switch" [class.muted]="form.estado === 'Inactivo'">
+          <input type="checkbox" [checked]="form.estado === 'Activo'" (change)="form.estado = form.estado === 'Activo' ? 'Inactivo' : 'Activo'">
+          <span></span>
+        </label>
+      </div>
+      <button (click)="guardar()">{{ editando() ? 'Guardar Cambios' : 'Crear Banner' }}</button>
+    </aside>
+  </section>
+</app-admin-shell>

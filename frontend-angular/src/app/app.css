@@ -1,0 +1,60 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.app-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: linear-gradient(180deg, #111c27, #101923);
+  color: #ffffff;
+}
+
+.loading-card {
+  display: grid;
+  width: min(320px, calc(100% - 48px));
+  gap: 18px;
+  justify-items: center;
+}
+
+.loading-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.loading-brand span {
+  color: var(--primary);
+  font-size: 44px;
+}
+
+.loading-bar {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+}
+
+.loading-bar span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  animation: loading-slide 1s ease-in-out infinite;
+}
+
+.loading-card p {
+  color: rgba(255,255,255,.68);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+@keyframes loading-slide {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(250%); }
+}

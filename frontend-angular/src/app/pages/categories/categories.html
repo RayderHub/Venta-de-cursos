@@ -1,0 +1,32 @@
+<app-public-header />
+
+<main class="category-page">
+  <section class="category-hero">
+    <p class="eyebrow">Explora por tema</p>
+    <h1>Categorias de aprendizaje</h1>
+    <p>Encuentra cursos por area y entra directo al catalogo con una intencion clara.</p>
+  </section>
+
+  <section class="category-grid">
+    @if (cargando()) {
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Cargando categorias...</p>
+      </div>
+    } @else {
+      @for (category of categories(); track category) {
+        <a class="category-card" routerLink="/catalogo" [queryParams]="{ categoria: category }">
+          <span>{{ category.charAt(0) }}</span>
+          <h2>{{ category }}</h2>
+          <p>{{ count(category) }} curso{{ count(category) === 1 ? '' : 's' }} disponibles</p>
+          <strong>Ver cursos -></strong>
+        </a>
+      } @empty {
+        <article class="category-empty">
+          <h2>No hay categorias con cursos publicados</h2>
+          <p>Cuando se registren cursos publicados en Supabase apareceran aqui.</p>
+        </article>
+      }
+    }
+  </section>
+</main>

@@ -1,0 +1,128 @@
+<app-admin-shell title="Usuarios">
+  @if (error()) {
+    <div class="error-message">{{ error() }}</div>
+  }
+  @if (message()) {
+    <div class="success-message">{{ message() }}</div>
+  }
+
+  <div class="filters-row">
+    <input placeholder="Buscar por nombre o email" [value]="busqueda()" (input)="busqueda.set($any($event.target).value)">
+    <select [ngModel]="rolFilter()" (ngModelChange)="rolFilter.set($event)">
+      <option value="">Todos los roles</option>
+      @for (rol of roles; track rol.id) {
+        <option [ngValue]="rol.id">{{ rol.label }}</option>
+      }
+    </select>
+    <span>{{ filtered().length }} usuarios</span>
+    <button (click)="abrirInvitacion()">Agregar usuario</button>
+    <button (click)="cargar()">Actualizar</button>
+  </div>
+
+  @if (panel() !== 'none') {
+    <section class="user-crud-panel">
+      <div class="crud-head">
+        <h2>{{ panel() === 'invite' ? 'Agregar usuario' : 'Editar usuario' }}</h2>
+        <button type="button" (click)="cerrarPanel()">Cerrar</button>
+      </div>
+
+      @if (panel() === 'invite') {
+        <div class="crud-grid">
+          <label>Email<input [(ngModel)]="inviteForm.email" type="email" placeholder="correo@ejemplo.com"></label>
+          <label>Nombre<input [(ngModel)]="inviteForm.full_name" placeholder="Nombre visible"></label>
+          <label>Rol
+            <select [(ngModel)]="inviteForm.role_id">
+              @for (rol of roles; track rol.id) {
+                <option [value]="rol.id">{{ rol.label }}</option>
+              }
+            </select>
+          </label>
+          <button type="button" class="save-crud" (click)="crearInvitacion()">Crear invitacion</button>
+        </div>
+        <p class="crud-note">No crea contrasena desde el panel. La persona se registra con ese email y recibe automaticamente el rol elegido.</p>
+      }
+
+      @if (panel() === 'edit') {
+        <div class="crud-grid">
+          <label>Nombre<input [(ngModel)]="editForm.full_name" placeholder="Nombre visible"></label>
+          <label>Bio<input [(ngModel)]="editForm.bio" placeholder="Bio publica o nota interna"></label>
+          <label>Rol
+            <select [(ngModel)]="editForm.role_id" [disabled]="esUsuarioActual(editando()!.id)">
+              @for (rol of roles; track rol.id) {
+                <option [value]="rol.id">{{ rol.label }}</option>
+              }
+            </select>
+          </label>
+          <label>Estado
+            <select [(ngModel)]="editForm.is_active" [disabled]="esUsuarioActual(editando()!.id)">
+              <option [ngValue]="true">Activo</option>
+              <option [ngValue]="false">Inactivo</option>
+            </select>
+          </label>
+          <button type="button" class="save-crud" (click)="guardarEdicion()">Guardar cambios</button>
+        </div>
+        @if (esUsuarioActual(editando()!.id)) {
+          <p class="crud-note">No puedes desactivar ni cambiar tu propio rol desde el panel.</p>
+        }
+      }
+    </section>
+  }
+
+  <div class="admin-users-layout">
+    <div class="users-table">
+      <table>
+        <thead>
+          <tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Fecha de Registro</th><th>Estado</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+          @if (cargando()) {
+            <tr><td colspan="6"><div class="loading-inline"><div class="loading-spinner small"></div><span>Cargando usuarios...</span></div></td></tr>
+          } @else {
+            @for (user of filtered(); track user.id) {
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    @if (user.avatar_url) {
+                      <img class="avatar-img" [src]="user.avatar_url" alt="">
+                    } @else {
+                      <span class="avatar-letter">{{ nombre(user).charAt(0).toUpperCase() }}</span>
+                    }
+                    <div class="user-info">
+                      <strong>{{ nombre(user) }}</strong>
+                      @if (esUsuarioActual(user.id)) {
+                        <small>Tu cuenta</small>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td>{{ user.email }}</td>
+                <td>
+                  <select class="role-select" [ngModel]="user.role_id" [disabled]="esUsuarioActual(user.id)" (ngModelChange)="cambiarRol(user.id, $event)">
+                    @for (rol of roles; track rol.id) {
+                      <option [ngValue]="rol.id">{{ rol.label }}</option>
+                    }
+                  </select>
+                </td>
+                <td>{{ user.created_at.slice(0, 10) || '-' }}</td>
+                <td>
+                  <button class="status" [class.inactive]="!user.is_active" [disabled]="esUsuarioActual(user.id)" (click)="cambiarEstado(user.id, !user.is_active)">
+                    {{ user.is_active ? 'Activo' : 'Inactivo' }}
+                  </button>
+                </td>
+                <td>
+                  <div class="user-actions">
+                    <button type="button" (click)="abrirEditar(user)">Editar</button>
+                    <button type="button" class="danger" [disabled]="esUsuarioActual(user.id)" (click)="eliminar(user)">Eliminar</button>
+                    <a class="profile-link" routerLink="/instructor/{{ user.id }}" [class.disabled]="user.role_id !== 'teacher'">Perfil</a>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6">No hay usuarios registrados.</td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</app-admin-shell>

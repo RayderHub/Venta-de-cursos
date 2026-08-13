@@ -1,0 +1,314 @@
+<div class="course-learn-container">
+  @if (cargandoCurso() || !curso()) {
+    <div class="learn-loading">
+      <div class="loading-spinner"></div>
+      <p>Cargando curso...</p>
+    </div>
+  } @else {
+    <div class="learn-layout" [class.sidebar-collapsed]="!sidebarOpen()">
+      <aside class="learn-sidebar">
+        <div class="sidebar-header">
+          <h2>{{ curso()!.titulo }}</h2>
+          <button class="sidebar-toggle" (click)="toggleSidebar()" title="Ocultar sidebar">&lt;</button>
+        </div>
+        <a class="sidebar-back-btn" routerLink="/usuario/dashboard">
+          <span class="back-icon">&#8592;</span>
+          <span>Volver al dashboard</span>
+        </a>
+        <nav class="lessons-nav">
+          @for (item of itemsSidebar(); track item.key) {
+            @if (item.tipo === 'leccion') {
+              <button class="lesson-nav-item" [class.active]="esLeccionActiva(item)" [class.locked]="esLeccionBloqueada(item.leccion.id)" (click)="seleccionarLeccion(item.leccion)">
+                <span class="nav-item-number" [class.viewed]="esVista(item.leccion.id)" [class.lock]="esLeccionBloqueada(item.leccion.id)">
+                  @if (esLeccionBloqueada(item.leccion.id)) {
+                    &#128274;
+                  } @else if (esVista(item.leccion.id)) {
+                    &#10003;
+                  } @else {
+                    {{ numeroLeccion(item) }}
+                  }
+                </span>
+                <div class="nav-item-info">
+                  <strong>{{ item.leccion.titulo }}</strong>
+                  @if (item.leccion.descripcion) {
+                    <small>{{ item.leccion.descripcion }}</small>
+                  }
+                </div>
+              </button>
+            } @else {
+              <button class="lesson-nav-item task-nav-item" [class.active]="esTareaActiva(item)" [class.locked]="esTareaBloqueada(item.tarea.id)" (click)="seleccionarTarea(item.tarea)">
+                <span class="nav-item-number nav-item-task" [class.approved]="esTareaAprobada(item.tarea.id)" [class.lock]="esTareaBloqueada(item.tarea.id)">
+                  @if (esTareaBloqueada(item.tarea.id)) {
+                    &#128274;
+                  } @else if (esTareaAprobada(item.tarea.id)) {
+                    &#10003;
+                  } @else {
+                    T
+                  }
+                </span>
+                <div class="nav-item-info">
+                  <strong>{{ item.tarea.titulo }}</strong>
+                  <small>Tarea</small>
+                </div>
+              </button>
+            }
+          } @empty {
+            <p class="muted sidebar-empty">Este curso aun no tiene lecciones ni tareas.</p>
+          }
+        </nav>
+      </aside>
+
+      <main class="learn-content" #learnContent (scroll)="onLearnScroll()">
+        @if (!sidebarOpen()) {
+          <button class="sidebar-open-btn" (click)="toggleSidebar()" title="Mostrar sidebar">&gt;</button>
+        }
+
+        @if (tareaActiva()) {
+          @if (mostrarResultadoFinal()) {
+            <article class="task-article">
+              <header class="task-view-head">
+                <h2>{{ tareaActiva()!.titulo }}</h2>
+                <div class="task-view-meta">
+                  <span class="task-view-pill">Aprobacion: {{ porcentajeAprobacion(tareaActiva()!) }}%</span>
+                </div>
+              </header>
+
+              @if (calificacionFinal() >= porcentajeAprobacion(tareaActiva()!)) {
+                <div class="task-result-banner passed">
+                  <span class="task-result-icon">&#10003;</span>
+                  <div class="task-result-text">
+                    <strong>Aprobaste la tarea</strong>
+                    <span>Calificacion: {{ calificacionFinal() }}% (minimo {{ porcentajeAprobacion(tareaActiva()!) }}%)</span>
+                  </div>
+                </div>
+              } @else {
+                <div class="task-result-banner failed">
+                  <span class="task-result-icon">&#10007;</span>
+                  <div class="task-result-text">
+                    <strong>No aprobaste la tarea</strong>
+                    <span>Calificacion: {{ calificacionFinal() }}% (minimo {{ porcentajeAprobacion(tareaActiva()!) }}%)</span>
+                  </div>
+                </div>
+
+                <div class="task-blocks">
+                  @for (contenido of contenidoTarea(); track contenido.id) {
+                    <div class="task-block">
+                      @switch (contenido.tipo) {
+                        @case ('titulo') {
+                          <h3 class="task-block-titulo">{{ contenido.contenido }}</h3>
+                        }
+                        @case ('texto') {
+                          <p class="task-block-texto">{{ contenido.contenido }}</p>
+                        }
+                        @case ('opcion_multiple') {
+                          <strong class="task-block-pregunta">{{ getTituloContenidoTarea(contenido) }}</strong>
+                          @for (opcion of parseContenidoTarea(contenido.contenido).opciones; track $index) {
+                            <div class="task-option" [class.correct]="claseOpcion(contenido, opcion) === 'correct'" [class.wrong]="claseOpcion(contenido, opcion) === 'wrong'">
+                              <span class="task-option-mark">
+                                @if (claseOpcion(contenido, opcion) === 'correct') {
+                                  &#10003;
+                                } @else if (claseOpcion(contenido, opcion) === 'wrong') {
+                                  &#10007;
+                                } @else {
+                                  ·
+                                }
+                              </span>
+                              {{ opcion }}
+                            </div>
+                          }
+                        }
+                        @case ('respuesta_texto') {
+                          <strong class="task-block-pregunta">{{ contenido.contenido }}</strong>
+                          <div class="task-option" [class.correct]="esCorrecta(contenido)" [class.wrong]="!esCorrecta(contenido)">
+                            <span class="task-option-mark">
+                              @if (esCorrecta(contenido)) {
+                                &#10003;
+                              } @else {
+                                &#10007;
+                              }
+                            </span>
+                            <span class="task-answer-text">{{ getRespuestaTexto(contenido.id) || 'Sin respuesta' }}</span>
+                          </div>
+                        }
+                      }
+                    </div>
+                  }
+                </div>
+
+                <button type="button" class="finalizar-btn" (click)="reintentarTarea()">Intentar de nuevo</button>
+              }
+            </article>
+          } @else if (esTareaAprobada(tareaActiva()!.id)) {
+            @if (resultadoTarea(tareaActiva()!.id); as resultadoGuardado) {
+              <article class="task-article">
+                <header class="task-view-head">
+                  <h2>{{ tareaActiva()!.titulo }}</h2>
+                  <div class="task-view-meta">
+                    <span class="task-view-pill">Aprobacion: {{ porcentajeAprobacion(tareaActiva()!) }}%</span>
+                  </div>
+                </header>
+                <div class="task-result-banner passed">
+                  <span class="task-result-icon">&#10003;</span>
+                  <div class="task-result-text">
+                    <strong>Aprobaste la tarea</strong>
+                    <span>Calificacion: {{ resultadoGuardado.calificacion }}% (minimo {{ porcentajeAprobacion(tareaActiva()!) }}%)</span>
+                  </div>
+                </div>
+              </article>
+            }
+          } @else {
+            <article class="task-article">
+              <header class="task-view-head">
+                <h2>{{ tareaActiva()!.titulo }}</h2>
+                <div class="task-view-meta">
+                  <span class="task-view-pill">Prioridad: {{ tareaActiva()!.prioridad }}</span>
+                  <span class="task-view-pill">Estado: {{ tareaActiva()!.estado }}</span>
+                  <span class="task-view-pill">Aprobacion: {{ porcentajeAprobacion(tareaActiva()!) }}%</span>
+                </div>
+              </header>
+
+              @if (cargando()) {
+                <div class="content-loading">
+                  <div class="loading-spinner small"></div>
+                </div>
+              } @else if (contenidoTarea().length > 0) {
+                <div class="task-blocks">
+                  @for (contenido of contenidoTarea(); track contenido.id) {
+                    <div class="task-block">
+                      @switch (contenido.tipo) {
+                        @case ('titulo') {
+                          <h3 class="task-block-titulo">{{ contenido.contenido }}</h3>
+                        }
+                        @case ('texto') {
+                          <p class="task-block-texto">{{ contenido.contenido }}</p>
+                        }
+                        @case ('opcion_multiple') {
+                          <strong class="task-block-pregunta">{{ getTituloContenidoTarea(contenido) }}</strong>
+                          @for (opcion of parseContenidoTarea(contenido.contenido).opciones; track $index) {
+                            <button type="button" class="task-option" [class.selected]="opcionSeleccionada(contenido.id, opcion)" (click)="toggleOpcion(contenido.id, opcion)">
+                              <span class="task-option-mark">{{ opcionSeleccionada(contenido.id, opcion) ? '●' : '○' }}</span>
+                              {{ opcion }}
+                            </button>
+                          }
+                        }
+                        @case ('respuesta_texto') {
+                          <strong class="task-block-pregunta">{{ contenido.contenido }}</strong>
+                          <textarea class="task-answer-input" rows="4" [value]="getRespuestaTexto(contenido.id)" (input)="setRespuestaTexto(contenido.id, $any($event.target).value)" placeholder="Escribe tu respuesta aqui..."></textarea>
+                        }
+                      }
+                    </div>
+                  }
+                </div>
+                <button type="button" class="finalizar-btn" [disabled]="finalizando()" (click)="finalizarTarea()">
+                  @if (finalizando()) {
+                    Calificando...
+                  } @else {
+                    Finalizar
+                  }
+                </button>
+              } @else {
+                <div class="content-empty">
+                  <p class="muted">Esta tarea aun no tiene contenido.</p>
+                </div>
+              }
+            </article>
+          }
+        } @else if (leccionActiva()) {
+          @if (cargando()) {
+            <div class="content-loading">
+              <div class="loading-spinner small"></div>
+            </div>
+          } @else if (contenido().length > 0) {
+            <article class="lesson-article">
+              @for (fila of filas(); track fila[0].id) {
+                <div class="content-row" [class.tarjetas-row]="fila.length > 1 && fila[0].tipo === 'tarjeta'">
+                  @for (block of fila; track block.id) {                    @switch (block.tipo) {
+                      @case ('titulo') {
+                        <h2 class="block-view-titulo">{{ block.contenido }}</h2>
+                      }
+                      @case ('texto') {
+                        <p class="block-view-texto">{{ block.contenido }}</p>
+                      }
+                      @case ('imagen') {
+                        @if (block.contenido) {
+                          <figure class="block-view-imagen">
+                            <img [src]="block.contenido" alt="Imagen de la leccion" loading="lazy">
+                          </figure>
+                        }
+                      }
+                      @case ('tarjeta') {
+                        <div class="flip-card" [class.flipped]="esTarjetaVolteada(block.id)" (click)="voltearTarjeta(block.id)" tabindex="0" (keydown.enter)="voltearTarjeta(block.id)">
+                          <div class="flip-inner">
+                            <div class="flip-face flip-front">
+                              <div class="front-content">
+                                @if (getTarjetaData(block.contenido).imagen) {
+                                  <img class="front-img" [src]="getTarjetaData(block.contenido).imagen" alt="Imagen de la tarjeta" loading="lazy">
+                                } @else {
+                                  <span class="front-badge">Tarjeta</span>
+                                }
+                                <h3>{{ getTarjetaData(block.contenido).titulo }}</h3>
+                                <span class="flip-hint">&#8635; Toca para voltear</span>
+                              </div>
+                            </div>
+                            <div class="flip-face flip-back">
+                              <div class="back-content">
+                                <p>{{ getTarjetaData(block.contenido).descripcion }}</p>
+                                <span class="flip-hint back">&#8635; Toca para regresar</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                      @case ('formulario') {
+                        <div class="block-view-formulario">
+                          <h3>{{ getFormData(block.contenido).titulo }}</h3>
+                          @for (campo of getFormData(block.contenido).campos; track $index) {
+                            <div class="form-campo">
+                              <label>{{ campo.etiqueta }}</label>
+                              @switch (campo.tipo) {
+                                @case ('email') {
+                                  <input type="email" [placeholder]="campo.placeholder || ''" class="form-input">
+                                }
+                                @case ('numero') {
+                                  <input type="number" [placeholder]="campo.placeholder || ''" class="form-input">
+                                }
+                                @case ('textarea') {
+                                  <textarea [placeholder]="campo.placeholder || ''" class="form-input" rows="3"></textarea>
+                                }
+                                @default {
+                                  <input type="text" [placeholder]="campo.placeholder || ''" class="form-input">
+                                }
+                              }
+                            </div>
+                          }
+                          <button type="button" class="form-submit-btn">Enviar</button>
+                        </div>
+                      }
+                    }
+                  }
+                </div>
+              }
+              @if (esVista(leccionActiva()!.id)) {
+                <div class="lesson-complete-banner">
+                  <span class="lesson-complete-icon">&#10003;</span>
+                  <div class="lesson-complete-text">
+                    <strong>Leccion completada</strong>
+                    <span>Llegaste al final de esta leccion. Ya puedes avanzar.</span>
+                  </div>
+                </div>
+              }
+            </article>
+          } @else {
+            <div class="content-empty">
+              <p class="muted">Esta leccion aun no tiene contenido.</p>
+            </div>
+          }
+        } @else if (itemsSidebar().length > 0) {
+          <div class="content-empty">
+            <p class="muted">Selecciona una leccion o tarea para ver su contenido.</p>
+          </div>
+        }
+      </main>
+    </div>
+  }
+</div>

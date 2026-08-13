@@ -1,0 +1,38 @@
+<header class="site-header">
+  <a class="brand" routerLink="/home">
+    <span class="brand-symbol">$</span>
+    <span>SkillAcademy</span>
+  </a>
+
+  <nav class="site-nav" aria-label="Navegacion principal">
+    <a routerLink="/home" routerLinkActive="active">Inicio</a>
+    <a routerLink="/catalogo" routerLinkActive="active">Cursos</a>
+    <a routerLink="/categorias" routerLinkActive="active">Categorias</a>
+    <a routerLink="/promociones" routerLinkActive="active">Promociones</a>
+  </nav>
+
+  <div class="header-actions">
+    <a class="cart-link" routerLink="/carrito" aria-label="Carrito">
+      <span>&#128722;</span>
+      @if (carrito.items().length > 0) {
+        <b>{{ carrito.items().length }}</b>
+      }
+    </a>
+
+    @if (auth.isAuthenticated()) {
+      <button class="user-chip" type="button" (click)="goToSpace()">
+        @if (auth.profile()?.avatar_url) {
+          <img [src]="auth.profile()?.avatar_url" alt="" class="user-avatar">
+        } @else {
+          <span class="avatar-letter">{{ (auth.profile()?.full_name || auth.user()?.email || 'U').charAt(0).toUpperCase() }}</span>
+        }
+        <span class="user-name">{{ auth.profile()?.full_name || auth.user()?.email }}</span>
+        <span class="role-badge">{{ roleLabel() }}</span>
+      </button>
+      <button class="logout-button" (click)="onLogout()">Salir</button>
+    } @else {
+      <a class="login-link" routerLink="/login">Login</a>
+      <a class="register-button" routerLink="/registro">Registrarse</a>
+    }
+  </div>
+</header>

@@ -1,0 +1,78 @@
+<div class="modal-backdrop" (click)="close.emit()">
+  <form class="modal-card" [formGroup]="form" (ngSubmit)="onSubmit()" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <h2>{{ tarea() ? 'Editar Tarea' : 'Nueva Tarea' }}</h2>
+      <button type="button" class="modal-close" (click)="close.emit()">✕</button>
+    </div>
+
+    <div class="form-grid">
+      <label class="full">
+        <span>Titulo</span>
+        <input formControlName="titulo" placeholder="Titulo de la tarea" maxlength="100">
+        @if (form.controls.titulo.invalid && form.controls.titulo.touched) {
+          <small class="field-error">El titulo debe tener al menos 3 caracteres.</small>
+        }
+      </label>
+
+      <label class="full">
+        <span>Curso</span>
+        <select formControlName="curso_id" [class.error]="form.controls.curso_id.invalid && form.controls.curso_id.touched">
+          <option [ngValue]="null" disabled>-- Elige un curso --</option>
+          @for (curso of cursos(); track curso.id) {
+            <option [ngValue]="curso.id">{{ curso.titulo }}</option>
+          }
+        </select>
+        @if (form.controls.curso_id.invalid && form.controls.curso_id.touched) {
+          <small class="field-error">Debes elegir un curso.</small>
+        }
+      </label>
+
+      <label>
+        <span>Fecha</span>
+        <input type="date" formControlName="fecha">
+      </label>
+
+      <label>
+        <span>Prioridad</span>
+        <select formControlName="prioridad">
+          @for (prioridad of prioridades; track prioridad) {
+            <option [value]="prioridad">{{ prioridad }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        <span>Estado</span>
+        <select formControlName="estado">
+          @for (estado of estados; track estado) {
+            <option [value]="estado">{{ estado }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        <span>Progreso (%)</span>
+        <input type="number" formControlName="progreso" min="0" max="100">
+      </label>
+
+      <label>
+        <span>Porcentaje de aprobacion (%)</span>
+        <input type="number" formControlName="porcentaje_aprobacion" min="1" max="100" title="Puntaje minimo para aprobar la tarea y desbloquear las lecciones siguientes">
+        @if (form.controls.porcentaje_aprobacion.invalid && form.controls.porcentaje_aprobacion.touched) {
+          <small class="field-error">El porcentaje debe estar entre 1 y 100.</small>
+        }
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" (click)="close.emit()">Cancelar</button>
+      <button type="submit" class="btn-primary" [disabled]="form.invalid || guardando()">
+        @if (guardando()) {
+          {{ tarea() ? 'Guardando...' : 'Creando...' }}
+        } @else {
+          {{ tarea() ? 'Guardar Cambios' : 'Crear Tarea' }}
+        }
+      </button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,68 @@
+.tv-shell {
+  max-width: 1280px;
+}
+
+.tv-frame {
+  border-radius: 34px;
+  padding: clamp(24px, 5vw, 56px);
+  background: linear-gradient(135deg, var(--header), #193126);
+  color: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.tv-content {
+  display: grid;
+  gap: 24px;
+}
+
+h1 {
+  max-width: 860px;
+  margin-bottom: 0;
+  font-size: clamp(36px, 6vw, 72px);
+  line-height: 1;
+}
+
+.tv-frame .eyebrow {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.promo-card {
+  display: grid;
+  gap: 18px;
+  max-width: 760px;
+  padding: clamp(24px, 4vw, 38px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.promo-card h2 {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 48px);
+}
+
+.promo-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: clamp(18px, 2vw, 26px);
+  line-height: 1.4;
+}
+
+.promo-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.promo-meta span {
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.status-pill {
+  width: fit-content;
+  background: rgba(33, 163, 102, 0.18);
+  color: #c9f5dc;
+}

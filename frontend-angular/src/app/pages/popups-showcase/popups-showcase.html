@@ -1,0 +1,28 @@
+<app-public-header />
+
+<main class="popups-page">
+  <a class="back-link" routerLink="/home">Volver al sitio</a>
+
+  @if (cargando()) {
+    <section class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Cargando popups...</p>
+    </section>
+  } @else if (visibles().length === 0) {
+    <section class="popup-card notice">
+      <h1>No hay popups activos</h1>
+      <p>Cuando el admin active una promocion, aparecera en esta seccion.</p>
+      <a routerLink="/catalogo">Ver catalogo</a>
+    </section>
+  } @else {
+    @for (popup of visibles(); track popup.id) {
+      <section class="popup-card offer">
+        <button type="button" (click)="cerrar(popup.id)" aria-label="Cerrar popup">x</button>
+        <img [src]="imageSrc(popup.imagen)" [alt]="popup.titulo">
+        <h1>{{ popup.titulo }}</h1>
+        <p>{{ popup.mensaje }}</p>
+        <a [routerLink]="popup.enlace || '/catalogo'">Abrir promocion</a>
+      </section>
+    }
+  }
+</main>

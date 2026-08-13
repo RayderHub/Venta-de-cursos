@@ -1,0 +1,318 @@
+<div class="lesson-builder">
+  @if (error()) {
+    <div class="lessons-error">{{ error() }}</div>
+  }
+  @if (exito()) {
+    <div class="lessons-success">{{ exito() }}</div>
+  }
+
+  <div class="lessons-layout">
+    <aside class="lessons-sidebar">
+      <h2>Curso</h2>
+      @if (cursos().length === 0) {
+        <p class="muted">No hay cursos disponibles.</p>
+      } @else {
+        <select (change)="seleccionarCurso($any($event.target).value !== '' ? cursos()[$any($event.target).value] : undefined)">
+          <option value="">-- Elige un curso --</option>
+          @for (curso of cursos(); track curso.id; let i = $index) {
+            <option [value]="i" [selected]="cursoSeleccionado()?.id === curso.id">
+              {{ curso.titulo }}
+            </option>
+          }
+        </select>
+      }
+
+      @if (cursoSeleccionado(); as curso) {
+        <div class="selected-course">
+          <h3>{{ curso.titulo }}</h3>
+          <p class="muted">{{ curso.categoria }} &bull; {{ curso.nivel }}</p>
+        </div>
+      }
+    </aside>
+
+    <section class="lessons-main">
+      @if (!cursoSeleccionado()) {
+        <div class="empty-state">
+          <span class="empty-icon">+</span>
+          <h2>Selecciona un curso</h2>
+          <p>Elige un curso para gestionar sus lecciones.</p>
+        </div>
+      } @else {
+        <div class="lessons-header">
+          <h2>Lecciones</h2>
+          <form class="add-lesson-form" (submit)="agregarLeccion(); $event.preventDefault()">
+            <input type="text" [(ngModel)]="nuevaLeccionTitulo" name="titulo" placeholder="Titulo de la leccion" required maxlength="100">
+            <input type="text" [(ngModel)]="nuevaLeccionDescripcion" name="descripcion" placeholder="Descripcion (opcional)" maxlength="500">
+            <button type="submit" [disabled]="guardando() || !this.nuevaLeccionTitulo.trim()">
+              {{ guardando() ? '...' : '+ Leccion' }}
+            </button>
+          </form>
+        </div>
+
+        @if (cargando() && lecciones().length === 0) {
+          <div class="loading-inline">
+            <div class="loading-spinner small"></div>
+            <p class="muted">Cargando lecciones...</p>
+          </div>
+        } @else if (lecciones().length === 0) {
+          <div class="empty-state small">
+            <p>No hay lecciones. Agrega la primera.</p>
+          </div>
+        } @else {
+          <div class="lessons-list">
+            @for (leccion of lecciones(); track leccion.id) {
+              <article class="lesson-card" [class.expanded]="leccionExpandida() === leccion.id">
+                <div class="lesson-header" (click)="expandirLeccion(leccion)">
+                  @if (editandoLeccionId === leccion.id) {
+                    <form class="edit-lesson-form" (submit)="guardarEdicionLeccion(); $event.preventDefault()" (click)="$event.stopPropagation()">
+                      <input type="text" [(ngModel)]="editandoLeccionTitulo" name="editTitulo" required>
+                      <input type="text" [(ngModel)]="editandoLeccionDescripcion" name="editDescripcion" placeholder="Descripcion">
+                      <button type="submit" class="save-btn" [disabled]="guardando()">OK</button>
+                      <button type="button" class="cancel-btn" (click)="cancelarEdicionLeccion()">X</button>
+                    </form>
+                  } @else {
+                    <div class="lesson-info">
+                      <span class="lesson-number">{{ $index + 1 }}</span>
+                      <div>
+                        <h3>{{ leccion.titulo }}</h3>
+                        @if (leccion.descripcion) {
+                          <p class="muted">{{ leccion.descripcion }}</p>
+                        }
+                      </div>
+                    </div>
+                    <div class="lesson-actions">
+                      <button class="edit-btn" title="Editar" (click)="iniciarEdicionLeccion(leccion, $event)">Editar</button>
+                      <button class="delete-btn" title="Eliminar" (click)="eliminarLeccion(leccion, $event)">Eliminar</button>
+                      <span class="expand-icon">{{ leccionExpandida() === leccion.id ? '▲' : '▼' }}</span>
+                    </div>
+                  }
+                </div>
+
+                @if (leccionExpandida() === leccion.id) {
+                  <div class="lesson-content">
+                    @if (cargando()) {
+                      <div class="loading-inline">
+                        <div class="loading-spinner small"></div>
+                        <p class="muted">Cargando contenido...</p>
+                      </div>
+                    } @else {
+                      <div class="content-blocks">
+                        @for (contenido of contenidoLeccion(); track contenido.id; let idx = $index) {
+                          <div class="block-wrapper">
+                            <div class="insert-zone" (mouseenter)="hoverInsert.set(idx)" (mouseleave)="hoverInsert.set(-1)">
+                              @if (hoverInsert() === idx) {
+                                <button class="insert-btn" (click)="abrirSelectorPosicion(idx)" title="Insertar entre estos bloques">+</button>
+                              } @else {
+                                <div class="insert-line"></div>
+                              }
+                            </div>
+                            <div class="content-block" [class]="'block-' + contenido.tipo">
+                              <div class="block-header">
+                                <span class="block-type-badge">{{ getTipoIcono(contenido.tipo) }}</span>
+                                <span class="block-type-label">{{ getTipoEtiqueta(contenido.tipo) }}</span>
+                                <span class="block-order">#{{ idx + 1 }}</span>
+                              </div>
+                              <div class="block-body" (click)="abrirModalEdicion(contenido)">
+                                @switch (contenido.tipo) {
+                                  @case ('titulo') {
+                                    <h3 class="block-titulo">{{ contenido.contenido }}</h3>
+                                  }
+                                  @case ('texto') {
+                                    <p class="block-preview-text">{{ contenido.contenido }}</p>
+                                  }
+                                  @case ('imagen') {
+                                    @if (contenido.contenido) {
+                                      <img [src]="contenido.contenido" alt="Imagen" class="block-preview-img">
+                                    } @else {
+                                      <p class="muted">Sin imagen</p>
+                                    }
+                                  }
+                                  @case ('tarjeta') {
+                                    <div class="block-preview-card">
+                                      @if (getTarjetaImagen(contenido.contenido)) {
+                                        <img [src]="getTarjetaImagen(contenido.contenido)" alt="Imagen de tarjeta" class="block-preview-img">
+                                      }
+                                      <strong>{{ getTarjetaTitulo(contenido.contenido) }}</strong>
+                                      <p class="muted">{{ getTarjetaDescripcion(contenido.contenido) }}</p>
+                                    </div>
+                                  }
+                                  @case ('formulario') {
+                                    <div class="block-preview-form">
+                                      <strong>{{ getFormTitulo(contenido.contenido) }}</strong>
+                                      <span class="campos-count">{{ getFormCamposCount(contenido.contenido) }} campo(s)</span>
+                                    </div>
+                                  }
+                                }
+                              </div>
+                              <div class="block-side-actions">
+                                <button class="side-btn edit" (click)="abrirModalEdicion(contenido)" title="Editar bloque">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                </button>
+                                <button class="side-btn delete" (click)="confirmarEliminar(contenido)" title="Eliminar bloque">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        }
+
+                        <div class="insert-zone bottom" (mouseenter)="hoverInsert.set(contenidoLeccion().length)" (mouseleave)="hoverInsert.set(-1)">
+                          @if (hoverInsert() === contenidoLeccion().length) {
+                            <button class="insert-btn" (click)="abrirSelectorPosicion(contenidoLeccion().length)" title="Insertar entre estos bloques">+</button>
+                          } @else {
+                            <div class="insert-line"></div>
+                          }
+                        </div>
+
+                        @if (contenidoLeccion().length === 0) {
+                          <div class="no-blocks">
+                            <p class="muted">Sin contenido aun. Agrega bloques con la barra de abajo.</p>
+                          </div>
+                        }
+
+                        <div class="add-content-toolbar">
+                          <span class="toolbar-label">Agregar bloque:</span>
+                          @for (tipo of tiposContenido; track tipo.valor) {
+                            <button class="add-block-btn" (click)="abrirModalConTipo(tipo.valor, contenidoLeccion().length)" [disabled]="guardando()">
+                              <span class="btn-icon">{{ tipo.icono }}</span>
+                              {{ tipo.etiqueta }}
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        }
+      }
+    </section>
+  </div>
+</div>
+
+@if (modalAbierto(); as tipo) {
+  <div class="modal-overlay" (click)="cerrarModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        @if (mostrandoSelector()) {
+          <h2>Agregar bloque</h2>
+        } @else {
+          <h2>{{ editandoContenidoId ? 'Editar' : 'Agregar' }} {{ getTipoEtiqueta(tipo) }}</h2>
+        }
+        <button class="modal-close" type="button" (click)="cerrarModal()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        @if (mostrandoSelector()) {
+          <div class="add-content-toolbar modal-toolbar">
+            <span class="toolbar-label">Agregar bloque:</span>
+            @for (t of tiposContenido; track t.valor) {
+              <button class="add-block-btn" (click)="seleccionarTipoModal(t.valor)">
+                <span class="btn-icon">{{ t.icono }}</span>
+                {{ t.etiqueta }}
+              </button>
+            }
+          </div>
+        } @else {
+          @switch (tipo) {
+            @case ('titulo') {
+              <div class="modal-field">
+                <label>Titulo de la seccion</label>
+                <input type="text" [(ngModel)]="modalTexto" placeholder="Escribe el titulo..." autofocus>
+              </div>
+            }
+            @case ('texto') {
+              <div class="modal-field">
+                <label>Contenido de texto</label>
+                <textarea [(ngModel)]="modalTexto" rows="6" placeholder="Escribe aqui el contenido..."></textarea>
+              </div>
+            }
+            @case ('imagen') {
+              <div class="modal-field">
+                <label>Seleccionar imagen</label>
+                <input #fileInput type="file" accept="image/*" (change)="onFileSelected($event)" class="file-input">
+                @if (modalImagenPreview) {
+                  <div class="image-preview">
+                    <img [src]="modalImagenPreview" alt="Preview">
+                  </div>
+                }
+              </div>
+            }
+            @case ('tarjeta') {
+              <div class="modal-field">
+                <label>Titulo de la tarjeta</label>
+                <input type="text" [(ngModel)]="modalTitulo" placeholder="Titulo">
+              </div>
+              <div class="modal-field">
+                <label>Descripcion</label>
+                <textarea [(ngModel)]="modalDescripcion" rows="4" placeholder="Descripcion de la tarjeta..."></textarea>
+              </div>
+              <div class="modal-field">
+                <label>Imagen (opcional)</label>
+                <input type="file" accept="image/*" (change)="onFileSelected($event)" class="file-input">
+                @if (modalImagenPreview) {
+                  <div class="image-preview">
+                    <img [src]="modalImagenPreview" alt="Preview">
+                  </div>
+                }
+              </div>
+            }
+            @case ('formulario') {
+              <div class="modal-field">
+                <label>Titulo del formulario</label>
+                <input type="text" [(ngModel)]="modalTitulo" placeholder="Titulo">
+              </div>
+              <div class="modal-field">
+                <label>Campos del formulario</label>
+                @for (campo of modalCampos; track $index) {
+                  <div class="campo-builder-row">
+                    <input type="text" [(ngModel)]="campo.etiqueta" placeholder="Etiqueta">
+                    <select [(ngModel)]="campo.tipo">
+                      <option value="texto">Texto</option>
+                      <option value="email">Email</option>
+                      <option value="numero">Numero</option>
+                      <option value="textarea">Area de texto</option>
+                    </select>
+                    <input type="text" [(ngModel)]="campo.placeholder" placeholder="Placeholder">
+                    <button type="button" class="remove-campo-btn" (click)="eliminarCampoFormulario($index)">X</button>
+                  </div>
+                }
+                <button type="button" class="add-campo-btn" (click)="agregarCampoFormulario()">+ Agregar campo</button>
+              </div>
+            }
+          }
+        }
+      </div>
+      <div class="modal-footer">
+        @if (!mostrandoSelector()) {
+          <button type="button" class="modal-btn-cancel" (click)="cerrarModal()">Cancelar</button>
+          <button type="button" class="modal-btn-save" (click)="guardarModal()" [disabled]="guardando()">
+            {{ textoBotonGuardar() }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+@if (contenidoEliminar(); as cont) {
+  <div class="modal-overlay" (click)="cancelarEliminar()">
+    <div class="modal-content small" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Eliminar bloque</h2>
+        <button class="modal-close" type="button" (click)="cancelarEliminar()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Estas por eliminar un bloque de <strong>{{ getTipoEtiqueta(cont.tipo) }}</strong>.</p>
+        <p class="muted">Esta accion no se puede deshacer.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn-cancel" (click)="cancelarEliminar()">Cancelar</button>
+        <button type="button" class="modal-btn-delete" (click)="eliminarContenido(cont)" [disabled]="guardando()">
+          {{ guardando() ? 'Eliminando...' : 'Eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

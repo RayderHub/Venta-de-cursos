@@ -1,0 +1,34 @@
+<main class="page-shell wearable-shell">
+  <section class="panel wearable-layout" aria-labelledby="wearable-title">
+    <div class="wearable-copy">
+      <p class="eyebrow">Practica 7</p>
+      <h1 id="wearable-title">Widget wearable SkillAcademy</h1>
+      <p>Vista migrada a Angular para representar el aviso corto que ya existia en el endpoint del smartwatch.</p>
+      <div class="api-note">
+        <strong>Endpoint:</strong>
+        <code>/api/widget/wearable</code>
+      </div>
+    </div>
+
+    <div class="watch-preview">
+      <span class="watch-icon">SA</span>
+      @if (error()) {
+        <p class="error-message">{{ error() }}</p>
+      } @else if (widget(); as data) {
+        <span class="status-pill">{{ data.estado }}</span>
+        <h2>{{ data.titulo }}</h2>
+        <p>{{ data.mensaje }}</p>
+        <small>{{ data.curso }}</small>
+        <div class="mini-progress" aria-label="Progreso del curso">
+          <span [style.width.%]="data.progreso"></span>
+        </div>
+        <a class="watch-button" [href]="data.enlace">{{ data.accion }}</a>
+      } @else {
+        <div class="loading-inline">
+          <div class="loading-spinner small"></div>
+          <p class="loading-message">Cargando aviso...</p>
+        </div>
+      }
+    </div>
+  </section>
+</main>

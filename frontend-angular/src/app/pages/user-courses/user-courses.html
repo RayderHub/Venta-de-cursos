@@ -1,0 +1,222 @@
+<div class="student-shell">
+  <aside class="student-sidebar">
+    <a class="student-brand" routerLink="/home"><span>$</span><span class="brand-text">SkillAcademy</span></a>
+    <nav>
+      <a [class.active]="tab() === 'cursos'" (click)="tab.set('cursos')"><span class="nav-icon">&#9638;</span><span class="nav-label">Mis Cursos</span></a>
+      <a [class.active]="tab() === 'progreso'" (click)="tab.set('progreso')"><span class="nav-icon">&#8599;</span><span class="nav-label">Progreso</span></a>
+      <a routerLink="/catalogo"><span class="nav-icon">&#9635;</span><span class="nav-label">Explorar Cursos</span></a>
+      <a routerLink="/promociones"><span class="nav-icon">&#9817;</span><span class="nav-label">Planes</span></a>
+    </nav>
+  </aside>
+
+  <section class="student-main">
+    <header class="student-topbar">
+      <div class="profile-menu">
+        <button class="profile-button" type="button" (click)="profileMenuOpen.set(!profileMenuOpen())" aria-label="Opciones de perfil">
+          @if (avatarUrl()) {
+            <img class="top-avatar" [src]="avatarUrl()" alt="Foto de perfil">
+          } @else {
+            <span class="avatar">{{ studentName().charAt(0).toUpperCase() }}</span>
+          }
+        </button>
+        @if (profileMenuOpen()) {
+          <div class="profile-dropdown">
+            <a routerLink="/perfil">Mi perfil</a>
+            <button type="button" (click)="salir()">Salir</button>
+          </div>
+        }
+      </div>
+    </header>
+
+    <main class="student-content">
+      @if (tab() === 'cursos') {
+        <div class="student-heading">
+          <div>
+            <h1>Mis Cursos</h1>
+            <p>Hola, {{ studentName() }}. Continua tu avance o explora nuevas rutas.</p>
+          </div>
+          <a routerLink="/catalogo">Explorar catalogo</a>
+        </div>
+
+        @if (!cargando()) {
+          <section class="student-stats">
+            <article><strong>{{ stats().cursos }}</strong><span>Cursos activos</span></article>
+            <article><strong>{{ stats().promedio }}%</strong><span>Progreso promedio</span></article>
+            <article><strong>{{ stats().tareas }}</strong><span>Tareas pendientes</span></article>
+          </section>
+        }
+
+        @if (cargando()) {
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Cargando tus cursos...</p>
+          </div>
+        } @else if (enrolled().length === 0) {
+          <section class="empty-state">
+            <h2>Aun no tienes cursos</h2>
+            <p>Explora el catalogo y compra tu primer curso para empezar a aprender.</p>
+            <a routerLink="/catalogo">Explorar Cursos</a>
+          </section>
+        } @else {
+          <div class="learning-grid">
+            @for (item of enrolledList(); track item.curso.id) {
+              <article class="learning-card" [class.wide]="$index > 1">
+                <img class="course-thumb" [src]="imageSrc(item.curso)" [alt]="item.curso.title">
+                <div class="learning-info">
+                  <h2>{{ item.curso.title }}</h2>
+                  <p>{{ item.curso.instructor }} - {{ item.curso.category }}</p>
+                  <div class="learning-actions">
+                    <button class="ver-btn" type="button" [routerLink]="['/curso/' + item.curso.id]">Ver curso</button>
+                    <button class="reembolso-btn" type="button" (click)="abrirReembolso(item.curso)">Reembolso</button>
+                  </div>
+                  <div class="rating-actions" aria-label="Calificar curso">
+                    <span>Calificar:</span>
+                    <div class="stars-container">
+                      @for (star of [1, 2, 3, 4, 5]; track star) {
+                        <button
+                          type="button"
+                          class="star-btn"
+                          [class]="'star-btn ' + getStarClass(item.curso.id, star)"
+                          (mouseenter)="setRatingHover(item.curso.id, star)"
+                          (mouseleave)="clearRatingHover()"
+                          (click)="openRating(item.curso.id)"
+                        >
+                          @if (getStarClass(item.curso.id, star) === 'star filled') {
+                            &#9733;
+                          } @else {
+                            &#9734;
+                          }
+                        </button>
+                      }
+                    </div>
+                    @if (hasRating(item.curso.id)) {
+                      <span class="rating-dado">Calificado</span>
+                    }
+                  </div>
+                </div>
+              </article>
+            } @empty {
+              <section class="empty-state">
+                <h2>No tienes cursos inscritos</h2>
+                <p>Explora el catalogo y compra tu primer curso para empezar a aprender.</p>
+                <a routerLink="/catalogo">Explorar Cursos</a>
+              </section>
+            }
+          </div>
+          @if (ratingMessage()) {
+            <p class="rating-message">{{ ratingMessage() }}</p>
+          }
+        }
+      } @else {
+        <div class="student-heading">
+          <div>
+            <h1>Progreso</h1>
+            <p>Avance de lecciones en cada uno de tus cursos inscritos.</p>
+          </div>
+        </div>
+
+        <section class="student-stats">
+          <article><strong>{{ stats().cursos }}</strong><span>Cursos activos</span></article>
+          <article><strong>{{ stats().promedio }}%</strong><span>Progreso promedio</span></article>
+          <article><strong>{{ stats().tareas }}</strong><span>Tareas pendientes</span></article>
+        </section>
+
+        @if (cargando()) {
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Cargando tu progreso...</p>
+          </div>
+        } @else if (enrolled().length === 0) {
+          <section class="empty-state">
+            <h2>Aun no tienes cursos</h2>
+            <p>Inscribete en un curso para comenzar a registrar tu progreso.</p>
+            <a routerLink="/catalogo">Explorar Cursos</a>
+          </section>
+        } @else {
+          <section class="progress-panel">
+            <h2>Mis cursos</h2>
+            <div class="progress-grid">
+              @for (item of enrolledList(); track item.curso.id) {
+                <article class="progress-card" [routerLink]="['/curso', item.curso.id, 'aprender']">
+                  <img class="progress-thumb" [src]="imageSrc(item.curso)" [alt]="item.curso.title">
+                  <div class="progress-info">
+                    <h3>{{ item.curso.title }}</h3>
+                    <div class="progress-line"><span [style.width.%]="item.progreso"></span></div>
+                    <span class="progress-pct">{{ item.progreso }}%</span>
+                  </div>
+                </article>
+              }
+            </div>
+          </section>
+        }
+      }
+    </main>
+  </section>
+</div>
+
+@if (modalReembolso()) {
+  <div class="modal-overlay" (click)="cerrarReembolso()">
+    <div class="modal-content" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Solicitar Reembolso</h2>
+        <button class="modal-close" type="button" (click)="cerrarReembolso()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="reembolso-course">{{ cursoReembolso()?.title }}</p>
+        <div class="modal-field">
+          <label>Correo electronico</label>
+          <input type="email" [(ngModel)]="correoReembolso" placeholder="tu@correo.com">
+        </div>
+        <div class="modal-field">
+          <label>Motivo del reembolso</label>
+          <textarea [(ngModel)]="motivoReembolso" rows="4" placeholder="Explica brevemente por que solicitas el reembolso..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn-cancel" (click)="cerrarReembolso()">Cancelar</button>
+        <button type="button" class="modal-btn-save" (click)="enviarReembolso()" [disabled]="!motivoReembolso().trim() || !correoReembolso().trim()">Enviar solicitud</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (ratingModal()) {
+  <div class="modal-overlay" (click)="closeRating()">
+    <div class="modal-content small" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Calificar curso</h2>
+        <button class="modal-close" type="button" (click)="closeRating()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="rating-input-stars">
+          @for (star of [1, 2, 3, 4, 5]; track star) {
+            <button
+              type="button"
+              class="star-input-btn"
+              [class.active]="star <= (ratingHoverStars() || ratingStars())"
+              (mouseenter)="ratingHoverStars.set(star)"
+              (mouseleave)="ratingHoverStars.set(0)"
+              (click)="setRating(star)"
+            >
+              @if (star <= (ratingHoverStars() || ratingStars())) {
+                &#9733;
+              } @else {
+                &#9734;
+              }
+            </button>
+          }
+        </div>
+        <div class="modal-field">
+          <label>Tu opinion (opcional)</label>
+          <textarea [(ngModel)]="ratingComment" rows="4" placeholder="Escribe tu opinion sobre el curso..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn-cancel" (click)="closeRating()">Cancelar</button>
+        <button type="button" class="modal-btn-save" (click)="submitRating()" [disabled]="ratingStars() === 0">
+          Enviar calificacion
+        </button>
+      </div>
+    </div>
+  </div>
+}

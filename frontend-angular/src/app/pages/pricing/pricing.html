@@ -1,0 +1,50 @@
+<app-public-header />
+
+<main class="pricing-page">
+  <section class="pricing-hero">
+    <p class="eyebrow">Promociones</p>
+    <h1>Promociones activas</h1>
+    <p>Consulta los banners publicados por administracion y abre cada promocion para ver el detalle completo.</p>
+  </section>
+
+  @if (cargando()) {
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Cargando promociones...</p>
+    </div>
+  } @else if (promociones().length === 0) {
+    <section class="empty-promos">
+      <h2>No hay promociones activas</h2>
+      <p>Vuelve pronto o explora el catalogo de cursos disponibles.</p>
+      <a routerLink="/catalogo">Ver cursos</a>
+    </section>
+  } @else {
+    <section class="promo-grid">
+      @for (promo of promociones(); track promo.id) {
+        <button class="promo-card" type="button" (click)="open(promo)">
+          <img [src]="imageSrc(promo.imagen)" [alt]="promo.titulo">
+          <div>
+            <span>{{ promo.subtitulo || 'Promocion activa' }}</span>
+            <h2>{{ promo.titulo }}</h2>
+            <p>{{ promo.descripcion || 'Haz click para conocer los detalles de esta promocion.' }}</p>
+          </div>
+        </button>
+      }
+    </section>
+  }
+</main>
+
+@if (selected(); as promo) {
+  <div class="promo-modal" (click)="close()">
+    <section class="promo-expanded" (click)="$event.stopPropagation()">
+      <button class="close-modal" type="button" (click)="close()">X</button>
+      <img [src]="imageSrc(promo.imagen)" [alt]="promo.titulo">
+      <div>
+        <span>{{ promo.subtitulo || 'Promocion activa' }}</span>
+        <h2>{{ promo.titulo }}</h2>
+        <p>{{ promo.descripcion || 'Esta promocion aun no tiene una descripcion larga configurada.' }}</p>
+        <a [routerLink]="promo.enlace || '/catalogo'" (click)="close()">Ver cursos</a>
+      </div>
+    </section>
+  </div>
+}

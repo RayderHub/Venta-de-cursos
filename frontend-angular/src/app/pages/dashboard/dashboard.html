@@ -1,0 +1,88 @@
+<main class="page-shell">
+  <section class="hero-card" aria-labelledby="dashboard-title">
+    <div>
+      <p class="eyebrow">Practica 8</p>
+      <h1 id="dashboard-title">Dashboard de tareas SkillAcademy</h1>
+      <p class="hero-copy">Panel web para revisar pendientes, progreso de cursos y avisos conectados con el widget wearable.</p>
+    </div>
+  </section>
+
+  @if (error()) {
+    <section class="panel notice-panel">
+      <p class="error-message">{{ error() }}</p>
+    </section>
+  }
+
+  @if (cargando()) {
+    <section class="panel notice-panel">
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Cargando dashboard...</p>
+      </div>
+    </section>
+  } @else if (estadisticas(); as stats) {
+    <section id="estadisticas" class="stats-grid" aria-label="Resumen de estadisticas">
+      <app-stat-card label="Progreso promedio" [value]="stats.progresoPromedio + '%'" note="Calculado con las tareas activas" [featured]="true" />
+      <app-stat-card label="Tareas totales" [value]="stats.totalTareas" note="Cursos y administracion" />
+      <app-stat-card label="Pendientes" [value]="stats.pendientes" note="Requieren seguimiento" />
+      <app-stat-card label="Completadas" [value]="stats.completadas" note="Finalizadas correctamente" />
+    </section>
+  }
+
+  <section class="content-grid">
+    <section id="tareas" class="panel" aria-labelledby="tasks-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Seguimiento</p>
+          <h2 id="tasks-title">Tareas activas</h2>
+        </div>
+        <span class="status-pill">Datos desde Fastify</span>
+      </div>
+
+      <div class="tasks-list" aria-live="polite">
+        @if (cargando()) {
+          <div class="loading-inline">
+            <div class="loading-spinner small"></div>
+            <p class="loading-message">Cargando tareas...</p>
+          </div>
+        } @else {
+          @for (tarea of tareas(); track tarea.id) {
+            <app-task-card [tarea]="tarea" />
+          }
+        }
+      </div>
+    </section>
+
+    <aside id="wearable" class="panel wearable-panel" aria-labelledby="wearable-title">
+      <div class="section-heading compact">
+        <div>
+          <p class="eyebrow">Practica 7</p>
+          <h2 id="wearable-title">Widget wearable</h2>
+        </div>
+      </div>
+
+      <div class="watch-preview">
+        <span class="watch-icon">SA</span>
+        @if (wearable(); as widget) {
+          <h3>{{ widget.nombre }}</h3>
+          <p>{{ widget.mensaje }}</p>
+          <div class="mini-progress" aria-label="Progreso del curso">
+            <span [style.width.%]="widget.progreso"></span>
+          </div>
+          <a class="watch-button" [href]="widget.enlace">{{ widget.accion }}</a>
+        } @else {
+          <h3>SkillAcademy Wear</h3>
+          <div class="loading-inline">
+            <div class="loading-spinner small"></div>
+            <p>Cargando aviso...</p>
+          </div>
+        }
+      </div>
+
+      <div class="api-note">
+        <strong>Endpoint:</strong>
+        <code>/api/widget/wearable</code>
+      </div>
+    </aside>
+  </section>
+</main>

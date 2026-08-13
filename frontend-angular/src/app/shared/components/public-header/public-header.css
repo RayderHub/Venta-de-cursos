@@ -1,0 +1,237 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+  min-height: 62px;
+  padding: 0 clamp(22px, 4vw, 58px);
+  background: #111a23;
+  color: #ffffff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 28px rgba(10, 18, 25, 0.18);
+}
+
+.site-header > * {
+  animation: headerItemIn 520ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.site-nav {
+  animation-delay: 90ms;
+}
+
+.header-actions {
+  animation-delay: 180ms;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-shadow:
+    0 1px 0 rgba(7, 13, 18, .52),
+    0 0 12px rgba(255, 255, 255, .2);
+  white-space: nowrap;
+}
+
+.brand-symbol {
+  color: var(--primary);
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.site-nav a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 62px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 15px;
+  transition: color .18s ease, transform .18s ease, text-shadow .18s ease;
+}
+
+.site-nav a.active,
+.site-nav a:hover {
+  color: #ffffff;
+  text-shadow: 0 0 18px rgba(33, 163, 102, .28);
+  transform: translateY(-1px);
+}
+
+.site-nav a.active::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--primary);
+  content: '';
+  animation: navLine .24s ease both;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.login-link {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.register-button {
+  border-radius: 8px;
+  background: var(--primary);
+  padding: 11px 18px;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(33, 163, 102, 0.28);
+}
+
+.register-button:hover {
+  background: var(--primary-dark);
+  box-shadow: 0 14px 28px rgba(33, 163, 102, .35);
+}
+
+.cart-link {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, .9);
+  font-size: 17px;
+}
+
+.cart-link b {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.cart-link:hover {
+  border-color: var(--primary);
+  background: rgba(33, 163, 102, .12);
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, 42vw);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  background: transparent;
+  padding: 4px 12px 4px 4px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.user-avatar,
+.avatar-letter {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--primary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.user-name {
+  overflow: visible;
+  max-width: none;
+  white-space: normal;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.role-badge {
+  border-radius: 999px;
+  background: rgba(33, 163, 102, .18);
+  color: #8ce0b5;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.logout-button {
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, .82);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  border-color: rgba(231, 76, 60, .6);
+  color: #e74c3c;
+  background: rgba(231, 76, 60, .1);
+}
+
+@keyframes navLine {
+  from { transform: scaleX(.25); opacity: .4; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+@media (max-width: 920px) {
+  .site-header {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-block: 14px;
+  }
+
+  .site-nav,
+  .header-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@keyframes headerItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

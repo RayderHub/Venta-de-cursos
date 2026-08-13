@@ -1,0 +1,28 @@
+.stat-card {
+  height: 100%;
+  padding: 22px;
+}
+
+.stat-card-main {
+  background: linear-gradient(135deg, var(--header), #1d3429);
+  color: #ffffff;
+}
+
+.stat-card strong {
+  display: block;
+  margin: 8px 0;
+  font-size: 36px;
+  line-height: 1;
+}
+
+.stat-label,
+.stat-note {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.stat-card-main .stat-label,
+.stat-card-main .stat-note {
+  color: rgba(255, 255, 255, 0.72);
+}

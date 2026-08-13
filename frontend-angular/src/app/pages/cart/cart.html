@@ -1,0 +1,65 @@
+<main class="cart-page">
+  <header class="cart-header">
+    <a routerLink="/catalogo" class="cart-title"><span>&#128722;</span> Shopping Cart</a>
+    <div class="steps" aria-label="Proceso de compra"><span class="active">1</span><i></i><span class="active">2</span><i></i><span>3</span></div>
+    <a routerLink="/home" class="home-link">Volver al Home</a>
+  </header>
+
+  <section class="cart-layout page-container">
+    <div class="cart-list" aria-label="Cursos en carrito">
+      @if (carrito.items().length === 0) {
+        <article class="cart-empty">
+          <h2>Tu carrito esta vacio</h2>
+          <p>Explora el catalogo y agrega cursos para comenzar.</p>
+          <a routerLink="/catalogo">Ir al Catalogo</a>
+        </article>
+      } @else {
+        @for (course of carrito.items(); track course.id) {
+          <article class="cart-row">
+            <img class="thumb" [src]="imageSrc(course)" [alt]="course.title">
+            <div class="item-info"><h2>{{ course.title }}</h2><p>{{ course.instructor }}</p></div>
+            <span class="item-price">${{ course.price.toFixed(2) }}</span>
+            <button type="button" (click)="eliminar(course.id)">Eliminar</button>
+          </article>
+        }
+        <div class="cart-subtotal"><strong>Subtotal ({{ carrito.items().length }})</strong><strong>${{ carrito.total().toFixed(2) }}</strong></div>
+      }
+    </div>
+
+    <aside class="order-summary">
+      <h2>Resumen del Pedido</h2>
+      <div><span>Subtotal</span><strong>${{ carrito.total().toFixed(2) }}</strong></div>
+
+      <form class="coupon-form" (submit)="$event.preventDefault(); aplicarCupon()">
+        <label>Codigo de descuento
+          <input [value]="couponCode()" (input)="couponCode.set($any($event.target).value)" placeholder="SKILL20">
+        </label>
+        <button type="submit" [disabled]="carrito.items().length === 0">Aplicar</button>
+      </form>
+
+      @if (couponMessage()) {
+        <p class="summary-message">{{ couponMessage() }}</p>
+      }
+      @if (discount() > 0) {
+        <div><span>Descuento</span><strong>- ${{ discountAmount().toFixed(2) }}</strong></div>
+      }
+      <hr>
+      <div><span>Total</span><strong>${{ total().toFixed(2) }}</strong></div>
+
+      @if (error()) {
+        <p class="summary-error">{{ error() }}</p>
+      }
+      @if (checkoutMessage()) {
+        <p class="summary-message">{{ checkoutMessage() }}</p>
+      }
+
+      <button class="checkout-button" type="button" (click)="checkout()" [disabled]="carrito.items().length === 0 || processing()">
+        {{ processing() ? 'Procesando...' : 'Completar compra simulada' }}
+      </button>
+      @if (carrito.items().length > 0) {
+        <button class="clear-button" type="button" (click)="vaciar()">Vaciar carrito</button>
+      }
+      <a class="summary-home" routerLink="/home">Regresar al Home</a>
+    </aside>
+  </section>
+</main>

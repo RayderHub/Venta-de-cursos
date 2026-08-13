@@ -1,0 +1,72 @@
+<app-public-header />
+
+<main class="home-page">
+  <section class="hero-section">
+    <div class="hero-copy">
+      <h1>Domina nuevas habilidades tecnologicas</h1>
+      <p>Encuentra cursos practicos, compra solo lo que necesitas y lleva tu progreso desde el panel de alumno.</p>
+      <a class="primary-button" routerLink="/catalogo">Explorar Cursos</a>
+    </div>
+  </section>
+
+  <section class="promo-strip">
+    <button class="carousel-arrow" type="button" (click)="movePromo(-1)" [disabled]="promos().length < 2" aria-label="Promocion anterior">&lt;</button>
+    <div class="promo-card-wide">
+      @if (activePromo(); as promo) {
+        <div>
+          <span>{{ promo.subtitulo || 'Promocion activa' }}</span>
+          <h2>{{ promo.titulo }}</h2>
+          <a [routerLink]="promo.enlace || '/catalogo'">Ver promocion</a>
+        </div>
+        <img class="promo-image" [src]="promoImage(promo.imagen)" [alt]="promo.titulo">
+      } @else {
+        <div>
+          <span>Catalogo SkillAcademy</span>
+          <h2>Domina nuevas habilidades tecnologicas</h2>
+          <a routerLink="/catalogo">Explorar Cursos</a>
+        </div>
+        <img class="promo-image" src="/assets/images/promo-instructor.svg" alt="Instructor de SkillAcademy presentando un curso">
+      }
+    </div>
+    <button class="carousel-arrow" type="button" (click)="movePromo(1)" [disabled]="promos().length < 2" aria-label="Siguiente promocion">&gt;</button>
+  </section>
+
+  <section class="course-section">
+    <div class="section-title-row">
+      <h2>Cursos Destacados</h2>
+      <a routerLink="/catalogo">Ver todos</a>
+    </div>
+    <div class="home-course-grid">
+      @if (cargando()) {
+        <div class="loading-state home-loading">
+          <div class="loading-spinner"></div>
+          <p>Cargando cursos...</p>
+        </div>
+      }
+      @for (course of featured(); track course.id) {
+        <app-course-card [course]="course" />
+      }
+    </div>
+  </section>
+
+  <section class="course-section split-section">
+    <div>
+      <div class="section-title-row"><h2>Mas vendidos</h2><a routerLink="/catalogo" [queryParams]="{ orden: 'rating' }">Explorar</a></div>
+      <div class="side-course-grid">
+        @for (course of bestSellers().slice(0, 4); track course.id) {
+          <app-course-card [course]="course" [compact]="true" />
+        }
+      </div>
+    </div>
+    <div>
+      <div class="section-title-row"><h2>Rutas recomendadas</h2><a routerLink="/categorias">Categorias</a></div>
+      <div class="side-course-grid">
+        @for (course of bestSellers().slice(2, 6); track course.id) {
+          <app-course-card [course]="course" [compact]="true" />
+        }
+      </div>
+    </div>
+  </section>
+</main>
+
+<app-public-footer />

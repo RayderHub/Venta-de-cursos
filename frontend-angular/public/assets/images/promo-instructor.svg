@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 250">
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#0f1c27"/><stop offset="1" stop-color="#145d47"/></linearGradient></defs>
+  <rect width="520" height="250" rx="16" fill="url(#g)"/>
+  <rect x="34" y="42" width="260" height="132" rx="10" fill="#101923" stroke="#285f4b"/>
+  <text x="56" y="78" font-family="Arial" font-size="20" font-weight="800" fill="#fff">Desace novas</text>
+  <text x="56" y="104" font-family="Arial" font-size="20" font-weight="800" fill="#fff">habilidades tecnologicas</text>
+  <rect x="56" y="132" width="90" height="28" rx="6" fill="#20b66b"/>
+  <circle cx="390" cy="84" r="42" fill="#ffd4ad"/>
+  <rect x="345" y="128" width="105" height="82" rx="22" fill="#111923"/>
+  <path d="M330 154c-40 18-74 43-95 72M440 150c30 12 54 32 72 61" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity=".5"/>
+</svg>

@@ -1,0 +1,18 @@
+<article class="task-card">
+  <div>
+    <h3 class="task-title">{{ tarea().titulo }}</h3>
+    <div class="task-meta">
+      <span>{{ tarea().curso }}</span>
+      <span>Entrega: {{ tarea().fecha }}</span>
+      <span>Estado: {{ tarea().estado }}</span>
+    </div>
+  </div>
+
+  <div class="task-progress">
+    <span class="task-priority">{{ tarea().prioridad }}</span>
+    <span class="progress-value">{{ tarea().progreso }}%</span>
+    <div class="progress-track" [attr.aria-label]="'Progreso ' + tarea().progreso + '%'">
+      <span [style.width.%]="tarea().progreso"></span>
+    </div>
+  </div>
+</article>

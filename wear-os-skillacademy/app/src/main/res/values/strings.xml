@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SkillAcademy</string>
+    <string name="default_web_url">http://10.0.2.2:4200/promociones</string>
+    <string name="promo_info_hint">Si deseas ver más información de esta promoción, revisa la versión completa en tu dispositivo de cómputo.</string>
+</resources>

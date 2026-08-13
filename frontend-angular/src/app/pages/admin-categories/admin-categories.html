@@ -1,0 +1,69 @@
+<app-admin-shell title="Categorias">
+  @if (error()) {
+    <div class="error-message">{{ error() }}</div>
+  }
+
+  <section class="category-layout">
+    <div class="category-table">
+      <div class="category-head">
+        <strong>Nombre</strong>
+        <strong>Descripcion</strong>
+        <strong>Estado</strong>
+        <strong>Acciones</strong>
+      </div>
+
+      @if (cargando()) {
+        <div class="category-row"><div class="loading-inline"><div class="loading-spinner small"></div><span>Cargando categorias...</span></div></div>
+      } @else {
+        @for (categoria of categorias(); track categoria.id) {
+          <article class="category-row">
+            <strong>{{ categoria.nombre }}</strong>
+            <p>{{ categoria.descripcion || 'Sin descripcion' }}</p>
+            <span [class.inactive]="categoria.estado === 'Inactiva'">{{ categoria.estado }}</span>
+            <div class="row-actions">
+              <button type="button" (click)="editar(categoria)">Editar</button>
+              <button type="button" class="danger" (click)="pedirEliminar(categoria)">Eliminar</button>
+            </div>
+          </article>
+        } @empty {
+          <div class="category-row">No hay categorias registradas.</div>
+        }
+      }
+    </div>
+
+    <aside class="category-form">
+      <div class="form-head">
+        <h2>{{ editando() ? 'Editar Categoria' : 'Nueva Categoria' }}</h2>
+        <button type="button" (click)="nueva()">Nueva</button>
+      </div>
+
+      <label>Nombre
+        <input [(ngModel)]="form.nombre" maxlength="45" placeholder="Programacion">
+      </label>
+      <label>Descripcion
+        <textarea [(ngModel)]="form.descripcion" rows="4" placeholder="Cursos relacionados con esta categoria"></textarea>
+      </label>
+      <label>Estado
+        <select [(ngModel)]="form.estado">
+          <option value="Activa">Activa</option>
+          <option value="Inactiva">Inactiva</option>
+        </select>
+      </label>
+
+      <button class="save-button" type="button" (click)="guardar()">{{ editando() ? 'Guardar Cambios' : 'Crear Categoria' }}</button>
+    </aside>
+  </section>
+</app-admin-shell>
+
+@if (eliminando(); as categoria) {
+  <div class="confirm-backdrop" (click)="cancelarEliminar()">
+    <section class="confirm-card" (click)="$event.stopPropagation()">
+      <h2>Eliminar categoria</h2>
+      <p>Vas a eliminar <strong>{{ categoria.nombre }}</strong>. Si hay cursos con este nombre, seguiran conservando el texto de categoria.</p>
+      <div class="confirm-actions">
+        <button type="button" class="cancel-delete" (click)="cancelarEliminar()">Cancelar</button>
+        <button type="button" class="confirm-delete" (click)="confirmarEliminar()">Eliminar</button>
+      </div>
+    </section>
+  </div>
+}

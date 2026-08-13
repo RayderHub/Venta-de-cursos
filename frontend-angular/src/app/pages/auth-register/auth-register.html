@@ -1,0 +1,74 @@
+<main class="auth-page">
+  <a class="back-home" routerLink="/home" aria-label="Volver al inicio">←</a>
+  <section class="auth-card register-card">
+    <h1>Registro</h1>
+
+    @if (error()) {
+      <div class="error-message" style="color: #8a2f21; margin-bottom: 16px; padding: 12px; background: #fef2f2; border-radius: 8px; font-size: 14px;">
+        {{ error() }}
+      </div>
+    }
+
+    @if (success()) {
+      <div class="error-message" style="color: #147a49; margin-bottom: 16px; padding: 12px; background: #eafaf1; border-radius: 8px; font-size: 14px;">
+        {{ success() }}
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <label>
+        <span>Nombre completo</span>
+        <input formControlName="fullName" maxlength="45" placeholder="Nombre completo" [class.error]="form.controls.fullName.invalid && form.controls.fullName.touched">
+        @if (form.controls.fullName.invalid && form.controls.fullName.touched) {
+          <span class="field-error">{{ fullNameError() }}</span>
+        }
+      </label>
+
+      <label>
+        <span>Email</span>
+        <input type="email" formControlName="email" placeholder="Email" [class.error]="form.controls.email.invalid && form.controls.email.touched">
+        @if (form.controls.email.invalid && form.controls.email.touched) {
+          <span class="field-error">{{ emailError() }}</span>
+        }
+      </label>
+
+      <label>
+        <span>Contraseña</span>
+        <input type="password" formControlName="password" placeholder="Contraseña" [class.error]="form.controls.password.invalid && form.controls.password.touched">
+        @if (form.controls.password.invalid && form.controls.password.touched) {
+          <span class="field-error">{{ passwordError() }}</span>
+        }
+      </label>
+
+      <label>
+        <span>Confirmar contraseña</span>
+        <input type="password" formControlName="confirmPassword" placeholder="Confirmar contraseña" [class.error]="form.hasError('passwordMismatch') && form.controls.confirmPassword.touched">
+        @if (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched) {
+          <span class="field-error">Las contraseñas no coinciden</span>
+        }
+      </label>
+
+      <p class="register-note">Las cuentas nuevas se crean como estudiante. Si recibiste una invitacion del admin, se aplicara automaticamente el rol indicado.</p>
+
+      <label class="terms">
+        <input type="checkbox" formControlName="terms">
+        <span>Acepto los términos y condiciones de SkillAcademy.</span>
+      </label>
+      @if (form.controls.terms.invalid && form.controls.terms.touched) {
+        <span class="field-error" style="display:block; margin: -12px 0 12px;">Debes aceptar los términos</span>
+      }
+
+      <button type="submit" class="submit-button" [disabled]="loading() || form.invalid">
+        @if (loading()) {
+          <span class="spinner"></span> Creando cuenta...
+        } @else {
+          Registrarse
+        }
+      </button>
+    </form>
+
+    <div class="divider"><span>o</span></div>
+    <button class="social-wide" disabled>G Registrarse con Google</button>
+    <p>¿Ya tienes cuenta? <a routerLink="/login">Iniciar sesión</a></p>
+  </section>
+</main>

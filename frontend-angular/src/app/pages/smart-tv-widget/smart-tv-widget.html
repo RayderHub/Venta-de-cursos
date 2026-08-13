@@ -1,0 +1,29 @@
+<main class="page-shell tv-shell">
+  <section class="tv-frame" aria-labelledby="tv-title">
+    <div class="tv-content">
+      <p class="eyebrow">Practica 6</p>
+      <h1 id="tv-title">Widget especializado para Smart TV</h1>
+
+      @if (error()) {
+        <p class="error-message">{{ error() }}</p>
+      } @else if (widget(); as data) {
+        <div class="promo-card">
+          <span class="status-pill">{{ data.estado }}</span>
+          <h2>{{ data.titulo }}</h2>
+          <p>{{ data.mensaje }}</p>
+          <div class="promo-meta">
+            <span>Curso: {{ data.curso }}</span>
+            <span>Categoria: {{ data.categoria }}</span>
+            <span>Descuento: {{ data.descuento }}</span>
+          </div>
+          <a class="primary-button" [href]="data.enlace">Abrir promocion</a>
+        </div>
+      } @else {
+        <div class="loading-inline">
+          <div class="loading-spinner small"></div>
+          <p class="loading-message">Cargando promocion...</p>
+        </div>
+      }
+    </div>
+  </section>
+</main>

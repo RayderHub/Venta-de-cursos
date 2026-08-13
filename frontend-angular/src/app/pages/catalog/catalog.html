@@ -1,0 +1,92 @@
+<app-public-header />
+
+<main class="catalog-layout">
+  <aside class="filters-panel">
+    <h2>Filtros</h2>
+
+    <section>
+      <h3>Categorias</h3>
+      <label>
+        <input type="radio" name="categoria" [checked]="selectedCategory() === 'Todas'" (change)="selectedCategory.set('Todas')">
+        Todas
+      </label>
+      @for (category of categories(); track category) {
+        <label>
+          <input type="radio" name="categoria" [checked]="selectedCategory() === category" (change)="selectedCategory.set(category)">
+          {{ category }}
+        </label>
+      }
+    </section>
+
+    <section>
+      <h3>Nivel</h3>
+      @for (level of levels(); track level) {
+        <label>
+          <input type="checkbox" [checked]="selectedLevels().includes(level)" (change)="toggleLevel(level)">
+          {{ level }}
+        </label>
+      }
+    </section>
+
+    <section>
+      <h3>Precio maximo</h3>
+      <input class="price-range" type="range" min="0" [max]="highestPrice()" [value]="activePriceLimit()" (input)="maxPrice.set(+$any($event.target).value)">
+      <div class="price-row"><span>$0.00</span><span>${{ activePriceLimit().toFixed(2) }}</span></div>
+    </section>
+  </aside>
+
+  <section class="catalog-content">
+    <div class="catalog-heading">
+      <div>
+        <h1>Catalogo de Cursos</h1>
+        <p class="result-count">{{ courseList().length }} curso{{ courseList().length === 1 ? '' : 's' }} disponibles</p>
+      </div>
+
+      <div class="catalog-actions">
+        <label>
+          <span>Buscar</span>
+          <input type="search" [value]="search()" (input)="onSearchChange($any($event.target).value)" placeholder="Curso o instructor">
+        </label>
+        <label>
+          <span>Ordenar</span>
+          <select [value]="sortMode()" (change)="sortMode.set($any($event.target).value)">
+            <option value="recommended">Recomendados</option>
+            <option value="price-low">Menor precio</option>
+            <option value="price-high">Mayor precio</option>
+            <option value="rating">Mejor valorados</option>
+          </select>
+        </label>
+        <button type="button" (click)="clearFilters()" [disabled]="!hasActiveFilters()">Limpiar filtros</button>
+      </div>
+    </div>
+
+    @if (cargando()) {
+      <div class="catalog-empty loading-state">
+        <div class="loading-spinner"></div>
+        <p>Cargando cursos...</p>
+      </div>
+    } @else if (buscando()) {
+      <div class="catalog-empty loading-state">
+        <div class="loading-spinner"></div>
+        <p>Buscando en Elasticsearch...</p>
+      </div>
+    } @else if (buscadorCaido()) {
+      <div class="catalog-empty">
+        <h2>El buscador no esta disponible</h2>
+        <p>No se pudo conectar con Elasticsearch. Se muestran resultados del catalogo local.</p>
+      </div>
+    } @else if (courseList().length === 0) {
+      <section class="catalog-empty">
+        <h2>No encontramos cursos con esos filtros</h2>
+        <p>Prueba otra categoria, nivel o rango de precio.</p>
+        <button type="button" (click)="clearFilters()">Ver todo el catalogo</button>
+      </section>
+    } @else {
+      <div class="catalog-grid">
+        @for (course of courseList(); track course.id) {
+          <app-course-card [course]="course" />
+        }
+      </div>
+    }
+  </section>
+</main>
