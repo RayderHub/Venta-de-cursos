@@ -5,14 +5,21 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // En Vercel el bundle de la función se genera en la raíz de la función y los
 // assets de `dist` se incluyen conservando la ruta relativa del proyecto, por
 // lo que `browserDistFolder` se resuelve distinto que en local (serve:ssr).
-const browserDistFolder = process.env['VERCEL']
-  ? join(import.meta.dirname, 'dist/frontend-angular/browser')
-  : join(import.meta.dirname, '../browser');
+// Se detecta la ruta existente en tiempo de ejecución (y `import.meta.dirname`
+// puede no existir en Node < 20.11).
+const serverDir = import.meta.dirname ?? fileURLToPath(new URL('.', import.meta.url));
+const localBrowserDistFolder = join(serverDir, '../browser');
+const vercelBrowserDistFolder = join(serverDir, 'dist/frontend-angular/browser');
+const browserDistFolder = existsSync(vercelBrowserDistFolder)
+  ? vercelBrowserDistFolder
+  : localBrowserDistFolder;
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
