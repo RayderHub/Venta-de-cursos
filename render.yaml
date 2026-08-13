@@ -12,12 +12,9 @@ services:
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: ELASTICSEARCH_URL
-        fromService:
-          name: skillacademy-elasticsearch
-          type: pserv
-          property: hostport
+        value: https://skillacademy-elasticsearch.onrender.com
 
-  - type: pserv
+  - type: web
     name: skillacademy-elasticsearch
     runtime: docker
     plan: free
