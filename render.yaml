@@ -20,8 +20,6 @@ services:
     plan: free
     dockerfilePath: backend-fastify/elasticsearch.Dockerfile
     envVars:
-      - key: ES_JAVA_OPTS
-        value: -Xms128m -Xmx128m
       - key: discovery.type
         value: single-node
       - key: xpack.security.enabled

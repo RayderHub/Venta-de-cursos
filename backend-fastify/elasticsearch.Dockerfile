@@ -3,6 +3,13 @@ FROM docker.elastic.co/elasticsearch/elasticsearch:7.17.24
 USER root
 
 RUN printf '%s\n' \
+    '-Xms96m' \
+    '-Xmx96m' \
+    '-XX:MaxDirectMemorySize=64m' \
+    '-XX:-AlwaysPreTouch' \
+    > /usr/share/elasticsearch/config/jvm.options.d/render.options
+
+RUN printf '%s\n' \
     '#!/bin/bash' \
     'set -e' \
     'if [ -n "$PORT" ]; then' \
