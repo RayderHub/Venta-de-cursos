@@ -32,3 +32,19 @@ td button.danger { color: #b33939; }
 .confirm-delete { border: 0; background: #b33939; color: #fff; }
 .confirm-actions button:disabled { cursor: not-allowed; opacity: .65; }
 .error-message { margin-bottom: 18px; border-radius: 9px; background: #fef2f2; color: #8a2f21; padding: 13px 16px; font-size: 15px; }
+
+@media (max-width: 700px) {
+  .table-actions {
+    flex-wrap: wrap;
+    margin: 0 0 18px;
+  }
+
+  .table-actions label {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .table-actions button {
+    width: 100%;
+  }
+}
