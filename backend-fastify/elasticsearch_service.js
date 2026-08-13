@@ -3,7 +3,8 @@ const { Client } = require('@elastic/elasticsearch');
 const supabaseUrl = process.env.SUPABASE_URL || 'https://uudjczjsobvqpyvuarhk.supabase.co';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'sb_publishable_uivXUxKRnq7zc0TYmLoBGQ_uXf4q2Jf';
 
-const ELASTICSEARCH_URL = process.env.ELASTICSEARCH_URL || 'http://localhost:9200';
+const rawElasticsearchUrl = process.env.ELASTICSEARCH_URL || 'http://localhost:9200';
+const ELASTICSEARCH_URL = /^https?:\/\//i.test(rawElasticsearchUrl) ? rawElasticsearchUrl : `http://${rawElasticsearchUrl}`;
 const INDEX_NAME = process.env.ELASTICSEARCH_INDEX || 'skillacademy_cursos';
 
 let client = null;
@@ -114,12 +115,25 @@ async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
       }
     : { match_all: {} };
 
-  const response = await es.search({
-    index: INDEX_NAME,
-    from: desde,
-    size: tamaño,
-    query: consulta
-  });
+  let response;
+  try {
+    response = await es.search({
+      index: INDEX_NAME,
+      from: desde,
+      size: tamaño,
+      query: consulta
+    });
+  } catch (error) {
+    if (!['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'socket hang up'].includes(error.message)) throw error;
+
+    const es2 = new Client({ node: ELASTICSEARCH_URL });
+    response = await es2.search({
+      index: INDEX_NAME,
+      from: desde,
+      size: tamaño,
+      query: consulta
+    });
+  }
 
   const hits = response.hits.hits.map((hit) => ({
     _score: hit._score ?? 0,

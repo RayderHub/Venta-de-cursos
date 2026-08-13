@@ -12,4 +12,24 @@ services:
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: ELASTICSEARCH_URL
-        value: http://localhost:9200
+        fromService:
+          name: skillacademy-elasticsearch
+          type: pserv
+          property: hostport
+
+  - type: pserv
+    name: skillacademy-elasticsearch
+    runtime: docker
+    plan: free
+    dockerfilePath: backend-fastify/elasticsearch.Dockerfile
+    envVars:
+      - key: ES_JAVA_OPTS
+        value: -Xms256m -Xmx256m
+      - key: discovery.type
+        value: single-node
+      - key: xpack.security.enabled
+        value: "false"
+    disk:
+      name: elasticsearch-data
+      mountPath: /usr/share/elasticsearch/data
+      sizeGB: 1
