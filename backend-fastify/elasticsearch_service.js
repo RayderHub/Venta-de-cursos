@@ -92,7 +92,7 @@ async function indexarCursos() {
     }
   ]);
 
-  const resultado = await es.bulk({ operations: operaciones });
+  const resultado = await es.bulk({ operations: operaciones, refresh: true });
   const fallidos = resultado.items.filter((item) => item.index && item.index.error).length;
 
   return { indexado: cursos.length - fallidos, total: cursos.length, fallidos };

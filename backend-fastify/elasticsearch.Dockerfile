@@ -1,4 +1,4 @@
-FROM docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+FROM docker.elastic.co/elasticsearch/elasticsearch:7.17.24
 
 USER root
 
@@ -11,7 +11,9 @@ RUN printf '%s\n' \
     'exec /bin/tini -- /usr/local/bin/docker-entrypoint.sh eswrapper' \
     > /usr/local/bin/render-entrypoint.sh \
  && chmod +x /usr/local/bin/render-entrypoint.sh \
- && chmod g+ws /usr/share/elasticsearch/config /usr/share/elasticsearch/config/elasticsearch.yml
+ && chmod g+ws /usr/share/elasticsearch/config /usr/share/elasticsearch/config/elasticsearch.yml \
+ && echo "node.ml: false" >> /usr/share/elasticsearch/config/elasticsearch.yml \
+ && echo "xpack.ml.enabled: false" >> /usr/share/elasticsearch/config/elasticsearch.yml
 
 USER 1000:0
 
