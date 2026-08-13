@@ -20,7 +20,7 @@ async function asegurarIndice() {
   const es = getClient();
   const existe = await es.indices.exists({ index: INDEX_NAME });
 
-  if (existe) return;
+  if (existe) return true;
 
   await es.indices.create({
     index: INDEX_NAME,
@@ -41,6 +41,7 @@ async function asegurarIndice() {
       }
     }
   });
+  return false;
 }
 
 async function listarCursosSupabase() {
@@ -97,8 +98,21 @@ async function indexarCursos() {
   return { indexado: cursos.length - fallidos, total: cursos.length, fallidos };
 }
 
-async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
+async function reindexarSiVacio() {
   await asegurarIndice();
+
+  const es = getClient();
+  const total = await es.count({ index: INDEX_NAME });
+
+  if (total.count === 0) {
+    return indexarCursos();
+  }
+
+  return { indexado: 0, total: total.count };
+}
+
+async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
+  await reindexarSiVacio();
 
   const es = getClient();
   const consulta = q && q.trim()
@@ -159,6 +173,7 @@ module.exports = {
   asegurarIndice,
   listarCursosSupabase,
   indexarCursos,
+  reindexarSiVacio,
   buscarCursos,
   reiniciarIndice
 };
