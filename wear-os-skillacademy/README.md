@@ -54,3 +54,18 @@ Luego usa esta URL en la app:
 ```txt
 http://127.0.0.1:3000/api/widget/wearable/promociones
 ```
+
+## Produccion (backend en Render)
+
+Cuando el backend este desplegado en Render, el reloj debe apuntar a la URL publica del servicio:
+
+```txt
+https://skillacademy-backend.onrender.com/api/widget/wearable/promociones
+```
+
+En el codigo la URL por defecto esta en `PromoService.java` (constante `DEFAULT_URL`). Puedes:
+
+- Cambiarla ahi y recompilar, o
+- Cambiarla en tiempo de ejecucion con `PromoService.setApiUrl(context, url)` (la guarda en `SharedPreferences`).
+
+Nota: la app usa la URL guardada en `SharedPreferences` si existe; si no, usa `DEFAULT_URL`.

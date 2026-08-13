@@ -7,7 +7,12 @@ import {
 import express from 'express';
 import { join } from 'node:path';
 
-const browserDistFolder = join(import.meta.dirname, '../browser');
+// En Vercel el bundle de la función se genera en la raíz de la función y los
+// assets de `dist` se incluyen conservando la ruta relativa del proyecto, por
+// lo que `browserDistFolder` se resuelve distinto que en local (serve:ssr).
+const browserDistFolder = process.env['VERCEL']
+  ? join(import.meta.dirname, 'dist/frontend-angular/browser')
+  : join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();

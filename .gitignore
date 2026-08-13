@@ -6,6 +6,7 @@ out-tsc/
 bazel-out/
 .angular/cache
 coverage/
+.vercel/
 *.log
 npm-debug.log*
 yarn-error.log*
