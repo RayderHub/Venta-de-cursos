@@ -11,7 +11,7 @@ coverage/
 npm-debug.log*
 yarn-error.log*
 
-# Android (wear-os-skillacademy)
+# Android (wear-os-skillacademy & mobile-android-skillacademy)
 .gradle/
 build/
 local.properties
@@ -20,6 +20,9 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+*.hprof
+.kotlin/
+~$*
 
 # Entornos y secretos
 .env
