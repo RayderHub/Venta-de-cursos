@@ -43,7 +43,11 @@ object SupabaseHttp {
         try {
             val url = URL("${SupabaseConfig.URL}$path")
             val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = method
+            val isPatch = method.equals("PATCH", ignoreCase = true)
+            conn.requestMethod = if (isPatch) "POST" else method
+            if (isPatch) {
+                conn.setRequestProperty("X-HTTP-Method-Override", "PATCH")
+            }
             conn.connectTimeout = 12_000
             conn.readTimeout    = 12_000
             conn.setRequestProperty("apikey",       SupabaseConfig.ANON)

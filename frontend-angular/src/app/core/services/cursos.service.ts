@@ -19,12 +19,15 @@ export class CursosService {
       instructor: c.instructor,
       instructorId: c.instructor_id,
       description: c.descripcion,
+      requisitos: c.requisitos,
+      queAprenderas: c.que_aprenderas,
       rating: Number(c.rating),
       reviews: c.reviews,
       price: Number(c.precio),
       oldPrice: c.old_precio != null ? Number(c.old_precio) : undefined,
       level: c.nivel,
-      image: c.imagen || 'code'
+      image: c.imagen || 'code',
+      imagenesGaleria: c.imagenes_galeria || []
     };
   }
 
@@ -41,7 +44,10 @@ export class CursosService {
       precio: c.price,
       old_precio: c.oldPrice ?? null,
       imagen: c.image,
+      imagenes_galeria: c.imagenesGaleria,
       descripcion: c.description ?? null,
+      requisitos: c.requisitos ?? null,
+      que_aprenderas: c.queAprenderas ?? null,
       estado: 'Publicado',
       rating: c.rating,
       reviews: c.reviews,

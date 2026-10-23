@@ -67,12 +67,16 @@ export class Catalog {
     const levels = this.selectedLevels();
     const query = this.search().trim().toLowerCase();
     const priceLimit = this.activePriceLimit();
+    // Si Elasticsearch ya devolvió resultados, no re-filtramos por texto localmente
+    // (ES ya aplicó el motor de búsqueda full-text con boosting y prefix query)
+    const esTieneResultados = this.resultadosBuscador() !== null;
 
     const filtered = this.fuenteCursos().filter((course) => {
       const matchesCategory = category === 'Todas' || course.category === category;
       const matchesLevel = levels.length === 0 || levels.includes(course.level);
       const matchesPrice = course.price <= priceLimit;
-      const matchesSearch = !query
+      // El filtro de texto local solo aplica cuando NO hay resultados de Elasticsearch
+      const matchesSearch = esTieneResultados || !query
         || course.title.toLowerCase().includes(query)
         || course.instructor.toLowerCase().includes(query)
         || course.category.toLowerCase().includes(query);

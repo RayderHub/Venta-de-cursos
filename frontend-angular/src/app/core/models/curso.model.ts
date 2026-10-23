@@ -10,7 +10,10 @@ export interface CursoDb {
   precio: number;
   old_precio: number | null;
   imagen: string;
+  imagenes_galeria?: string[];
   descripcion: string | null;
+  requisitos?: string | null;
+  que_aprenderas?: string | null;
   estado: CursoEstado;
   rating: number;
   reviews: number;

@@ -5,12 +5,15 @@ export interface Course {
   instructor: string;
   instructorId?: string | null;
   description?: string | null;
+  requisitos?: string | null;
+  queAprenderas?: string | null;
   rating: number;
   reviews: number;
   price: number;
   oldPrice?: number;
   level: string;
   image: string;
+  imagenesGaleria?: string[];
   progress?: number;
 }
 

@@ -11,44 +11,50 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.skillacademy.mobile.data.mock.MockData
+import com.skillacademy.mobile.data.model.CategoryUiModel
 import com.skillacademy.mobile.data.model.CourseUiModel
 import com.skillacademy.mobile.ui.components.CategoryFilterChip
 import com.skillacademy.mobile.ui.components.SkillCourseCard
 import com.skillacademy.mobile.ui.theme.*
 
+/**
+ * Entregable 2 — CatalogScreen actualizado
+ * Búsqueda predictiva en tiempo real con Supabase y fallback local.
+ */
 @Composable
 fun CatalogScreen(
+    courses: List<CourseUiModel>,
+    categories: List<CategoryUiModel>,
+    isLoading: Boolean = false,
     initialCategory: String? = null,
     onCourseClick: (Long) -> Unit,
-    onAddToCart: (CourseUiModel) -> Unit
+    onAddToCart: (CourseUiModel) -> Unit,
+    onSearchQueryChanged: (String) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(initialCategory ?: "Todos") }
     var selectedLevel by remember { mutableStateOf("Todos") }
-
-    val allCourses = MockData.courses
     val levels = listOf("Todos", "Principiante", "Intermedio", "Avanzado")
 
-    val filteredCourses = remember(searchQuery, selectedCategory, selectedLevel) {
-        allCourses.filter { curso ->
-            val matchQuery = searchQuery.isBlank() ||
-                    curso.titulo.contains(searchQuery, ignoreCase = true) ||
-                    curso.instructor.contains(searchQuery, ignoreCase = true) ||
-                    curso.categoria.contains(searchQuery, ignoreCase = true)
-
+    /**
+     * Los cursos ya llegan filtrados por Elasticsearch desde el ViewModel.
+     * Aquí solo se aplican los chips de Categoría y Nivel como refinamiento secundario.
+     */
+    val filteredCourses = remember(selectedCategory, selectedLevel, courses) {
+        courses.filter { curso ->
             val matchCategory = selectedCategory == "Todos" ||
                     curso.categoria.equals(selectedCategory, ignoreCase = true)
 
             val matchLevel = selectedLevel == "Todos" ||
                     curso.nivel.equals(selectedLevel, ignoreCase = true)
 
-            matchQuery && matchCategory && matchLevel
+            matchCategory && matchLevel
         }
     }
 
@@ -57,17 +63,27 @@ fun CatalogScreen(
             .fillMaxSize()
             .background(SkillBackground)
     ) {
-        // Barra de Búsqueda
+        // Barra de Búsqueda Predictiva (conectada a CoursesViewModel para búsqueda en Supabase)
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { searchQuery = it },
+            onValueChange = {
+                searchQuery = it
+                onSearchQueryChanged(it)
+            },
             placeholder = { Text("Buscar cursos, temas o instructores...", fontSize = 13.sp) },
             leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = "Buscar", tint = SkillCyan)
+                if (isLoading && searchQuery.isNotEmpty()) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = SkillCyan, strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Default.Search, contentDescription = "Buscar", tint = SkillCyan)
+                }
             },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
+                    IconButton(onClick = {
+                        searchQuery = ""
+                        onSearchQueryChanged("")
+                    }) {
                         Icon(Icons.Default.Clear, contentDescription = "Limpiar")
                     }
                 }
@@ -85,7 +101,7 @@ fun CatalogScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         )
 
-        // Filtro de Categorías
+        // Filtro de Categorías (desde Supabase)
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             modifier = Modifier.padding(bottom = 6.dp)
@@ -97,7 +113,7 @@ fun CatalogScreen(
                     onSelected = { selectedCategory = "Todos" }
                 )
             }
-            items(MockData.categories) { cat ->
+            items(categories) { cat ->
                 CategoryFilterChip(
                     nombre = cat.nombre,
                     isSelected = selectedCategory == cat.nombre,
@@ -115,7 +131,7 @@ fun CatalogScreen(
                 FilterChip(
                     selected = selectedLevel == lvl,
                     onClick = { selectedLevel = lvl },
-                    label = { Text("Nivel: $lvl", fontSize = 11.sp) },
+                    label = { Text("$lvl", fontSize = 11.sp) },
                     shape = RoundedCornerShape(12.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFFCCFBF1),
@@ -130,10 +146,14 @@ fun CatalogScreen(
 
         // Contador de Resultados
         Text(
-            text = "${filteredCourses.size} cursos disponibles",
+            text = when {
+                isLoading && searchQuery.isNotBlank() -> "Buscando en Elasticsearch..."
+                searchQuery.isNotBlank() -> "${filteredCourses.size} resultado(s) de Elasticsearch"
+                else -> "${filteredCourses.size} cursos disponibles"
+            },
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = SkillTextMuted,
+            color = if (isLoading) SkillCyan else SkillTextMuted,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
         )
 
@@ -143,34 +163,60 @@ fun CatalogScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            if (filteredCourses.isEmpty()) {
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 40.dp),
-                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "No se encontraron cursos con estos filtros",
-                            color = SkillTextSecondary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Intenta buscar con otros términos o categorías.",
-                            color = SkillTextMuted,
-                            fontSize = 12.sp
-                        )
+            when {
+                isLoading && courses.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator(color = SkillEmerald)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    if (searchQuery.isNotBlank())
+                                        "Buscando en Elasticsearch..."
+                                    else
+                                        "Cargando catálogo desde Supabase...",
+                                    color = SkillTextMuted, fontSize = 12.sp
+                                )
+                            }
+                        }
                     }
                 }
-            } else {
-                items(filteredCourses) { curso ->
-                    SkillCourseCard(
-                        curso = curso,
-                        onCourseClick = onCourseClick,
-                        onAddToCart = onAddToCart
-                    )
+                filteredCourses.isEmpty() -> {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No se encontraron cursos",
+                                color = SkillTextSecondary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (searchQuery.isNotBlank())
+                                    "Intenta con otros términos de búsqueda."
+                                else
+                                    "Intenta con otra categoría o nivel.",
+                                color = SkillTextMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    items(filteredCourses) { curso ->
+                        SkillCourseCard(
+                            curso = curso,
+                            onCourseClick = onCourseClick,
+                            onAddToCart = onAddToCart
+                        )
+                    }
                 }
             }
         }

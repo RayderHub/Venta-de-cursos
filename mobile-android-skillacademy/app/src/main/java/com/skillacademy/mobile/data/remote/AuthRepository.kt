@@ -9,7 +9,8 @@ import org.json.JSONObject
 data class SupabaseSession(
     val accessToken: String,
     val userId: String,
-    val email: String
+    val email: String,
+    val refreshToken: String = ""
 )
 
 data class SupabaseProfile(
@@ -54,8 +55,8 @@ object AuthRepository {
             if (!result.isSuccess) return@withContext SupabaseResult(error = result.error)
 
             val json = result.data!!
-            // Supabase devuelve { access_token, user: { id, email } }
-            val token  = json.optString("access_token", "")
+            val token = json.optString("access_token", "")
+            val refresh = json.optString("refresh_token", "")
             val userObj = json.optJSONObject("user")
             val userId = userObj?.optString("id", "") ?: ""
             val userEmail = userObj?.optString("email", email) ?: email
@@ -63,7 +64,71 @@ object AuthRepository {
             if (token.isEmpty() || userId.isEmpty()) {
                 return@withContext SupabaseResult(error = "Invalid login credentials")
             }
-            SupabaseResult(data = SupabaseSession(token, userId, userEmail))
+            SupabaseResult(data = SupabaseSession(token, userId, userEmail, refresh))
+        }
+
+    /**
+     * Renueva un accessToken expirado usando el refresh_token.
+     */
+    suspend fun refreshToken(refreshToken: String): SupabaseResult<SupabaseSession> =
+        withContext(Dispatchers.IO) {
+            if (refreshToken.isBlank()) return@withContext SupabaseResult(error = "No refresh token")
+            val body = JSONObject().apply {
+                put("refresh_token", refreshToken)
+            }
+            val result = SupabaseHttp.post(
+                path = "/auth/v1/token?grant_type=refresh_token",
+                body = body
+            )
+            if (!result.isSuccess) return@withContext SupabaseResult(error = result.error)
+
+            val json = result.data!!
+            val token = json.optString("access_token", "")
+            val newRefresh = json.optString("refresh_token", refreshToken)
+            val userObj = json.optJSONObject("user")
+            val userId = userObj?.optString("id", "") ?: ""
+            val userEmail = userObj?.optString("email", "") ?: ""
+
+            if (token.isEmpty()) return@withContext SupabaseResult(error = "Failed to refresh token")
+            SupabaseResult(data = SupabaseSession(token, userId, userEmail, newRefresh))
+        }
+
+    /**
+     * Registra un nuevo estudiante en Supabase Auth.
+     */
+    suspend fun signUp(email: String, password: String, fullName: String): SupabaseResult<SupabaseSession> =
+        withContext(Dispatchers.IO) {
+            val userMetadata = JSONObject().apply {
+                put("full_name", fullName.trim())
+                put("role_id", "student")
+            }
+            val body = JSONObject().apply {
+                put("email", email.trim())
+                put("password", password)
+                put("data", userMetadata)
+            }
+            val result = SupabaseHttp.post(
+                path = "/auth/v1/signup",
+                body = body
+            )
+            if (!result.isSuccess) return@withContext SupabaseResult(error = result.error)
+
+            val json = result.data!!
+            val token = json.optString("access_token", "")
+            val refresh = json.optString("refresh_token", "")
+            val userObj = json.optJSONObject("user") ?: json
+            val userId = userObj.optString("id", "")
+            val userEmail = userObj.optString("email", email)
+
+            if (userId.isEmpty()) {
+                return@withContext SupabaseResult(error = "No se pudo crear el usuario")
+            }
+
+            if (token.isNotEmpty()) {
+                SupabaseResult(data = SupabaseSession(token, userId, userEmail, refresh))
+            } else {
+                signIn(email, password)
+            }
         }
 
     /**
@@ -93,4 +158,38 @@ object AuthRepository {
                 )
             )
         }
+
+    /**
+     * Actualiza el perfil en la tabla `profiles` (nombre, avatar_url, bio)
+     * Igual que perfil.ts en la web.
+     */
+    suspend fun updateProfile(
+        userId: String,
+        accessToken: String,
+        fullName: String,
+        avatarUrl: String?,
+        bio: String?
+    ): SupabaseResult<Boolean> = withContext(Dispatchers.IO) {
+        val body = JSONObject().apply {
+            put("full_name", fullName.trim())
+            if (!avatarUrl.isNullOrBlank()) {
+                put("avatar_url", avatarUrl.trim())
+            } else {
+                put("avatar_url", JSONObject.NULL)
+            }
+            if (bio != null) {
+                put("bio", bio.trim())
+            }
+        }
+        val result = SupabaseHttp.patch(
+            path = "/rest/v1/profiles?id=eq.$userId",
+            body = body,
+            accessToken = accessToken
+        )
+        if (result.isSuccess) {
+            SupabaseResult(data = true)
+        } else {
+            SupabaseResult(error = result.error ?: "Error al actualizar perfil")
+        }
+    }
 }

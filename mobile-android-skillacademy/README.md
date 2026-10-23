@@ -32,30 +32,6 @@ Este entregable implementa la maquetación visual completa con Material 3 y Jetp
 
 ---
 
-## 🌐 Práctica 3: Consumo de una URL preasignada (Extensión ConsultaWeb)
-
-Esta extensión implementa los requerimientos funcionales para el consumo de recursos HTTP en red y procesamiento de datos JSON:
-
-### 1. Requerimientos Funcionales Implementados
-- **RF01**: Título de la pantalla: *"Consulta de información"*.
-- **RF02**: Botón interactivo: *"CONSULTAR"*.
-- **RF03**: Petición HTTP (`HttpURLConnection` en hilo `Dispatchers.IO`) a la URL preasignada.
-- **RF04**: Visualización y formato estructurado del JSON devuelto.
-- **RF05**: Estado de carga dinámico con spinner y texto: *"Consultando..."*.
-- **RF06**: Manejo de excepciones y estado de fallo mostrando: *"No fue posible obtener la información."*.
-
-### 2. Acceso dentro de la App
-- **Desde la barra superior (TopBar)**: Ícono de nube/HTTP situado a la izquierda del carrito.
-- **Desde la pantalla de Inicio (Home)**: Tarjeta destacada *"Práctica 3: ConsultaWeb"*.
-- **Desde la pestaña Perfil**: Opción de menú *"ConsultaWeb (Práctica 3 URL Preasignada)"*.
-
-### 3. Protocolo de Pruebas para Evaluación
-1. **Prueba 1 — Con conexión**: Mantén la conexión a internet activa y pulsa **CONSULTAR**. Observarás el estado *"Consultando..."* seguido del JSON devuelto con código HTTP 200 OK.
-2. **Prueba 2 — Sin conexión**: Activa el **Modo Avión** en tu dispositivo/emulador y pulsa **CONSULTAR**. Se captura la excepción de red y se presenta el mensaje de error de RF06: *"No fue posible obtener la información."*.
-3. **Prueba 3 — Modificación de la URL**: Edita la URL en el campo de texto (o presiona el chip *"URL Inválida"*). Al presionar **CONSULTAR**, se evidencia que la lógica no está fija y maneja códigos de error como 404 o servidores inexistentes.
-
----
-
 ## 🚀 Cómo Abrir y Ejecutar el Proyecto
 
 1. Abre **Android Studio**.

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,7 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skillacademy.mobile.ui.theme.SkillEmerald
-import androidx.compose.material.icons.filled.CloudDownload
 import com.skillacademy.mobile.ui.theme.SkillNavy
 import com.skillacademy.mobile.ui.theme.SkillSurface
 
@@ -26,7 +26,7 @@ import com.skillacademy.mobile.ui.theme.SkillSurface
 fun SkillTopBar(
     cartCount: Int,
     onCartClick: () -> Unit,
-    onConsultaWebClick: (() -> Unit)? = null
+    onNetworkTestClick: (() -> Unit)? = null
 ) {
     TopAppBar(
         title = {
@@ -62,13 +62,12 @@ fun SkillTopBar(
             }
         },
         actions = {
-            if (onConsultaWebClick != null) {
-                IconButton(onClick = onConsultaWebClick) {
+            if (onNetworkTestClick != null) {
+                IconButton(onClick = onNetworkTestClick) {
                     Icon(
                         imageVector = Icons.Default.CloudDownload,
-                        contentDescription = "ConsultaWeb Práctica 3",
-                        tint = Color(0xFF38BDF8),
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = "Práctica 3 - ConsultaWeb",
+                        tint = Color(0xFF38BDF8)
                     )
                 }
             }

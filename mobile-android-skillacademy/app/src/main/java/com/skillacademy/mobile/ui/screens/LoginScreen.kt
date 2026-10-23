@@ -1,6 +1,9 @@
 package com.skillacademy.mobile.ui.screens
 
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,8 +11,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -22,6 +27,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -31,63 +37,103 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.skillacademy.mobile.data.local.SessionManager
 import com.skillacademy.mobile.data.remote.AuthRepository
 import com.skillacademy.mobile.data.remote.SupabaseProfile
 import com.skillacademy.mobile.data.remote.SupabaseSession
 import com.skillacademy.mobile.ui.theme.*
+import android.util.Log
 import kotlinx.coroutines.launch
 
+// ─── Constantes de Código Seguro (Práctica 5 - AccesoSeguro) ──────────────────
+private const val MAX_USER_LENGTH = 50
+private const val MIN_PASSWORD_LENGTH = 8
+private const val MAX_PASSWORD_LENGTH = 32
+
 /**
- * Entregable 2 — Pantalla de Inicio de Sesión
+ * Entregable 2 — Pantalla de Autenticación Unificada (Login y Registro)
  *
- * Réplica funcional del login web (auth-login.html / auth-login.ts):
- *  ✔ Campo Email con validación de formato
- *  ✔ Campo Contraseña con validación mínima 6 caracteres
- *  ✔ Show/hide contraseña
- *  ✔ Recordarme (checkbox)
- *  ✔ ¿Olvidaste tu contraseña? (enlace)
- *  ✔ Spinner de carga durante el login
- *  ✔ Mensaje de error en tiempo real
- *  ✔ Redireccionamiento por rol (student / teacher / admin)
- *
- * Práctica 4 — también accesible después del login desde el perfil.
+ * Réplica funcional de la autenticación web de SkillAcademy:
+ *  ✔ Inicio de sesión con Email y Contraseña
+ *  ✔ Registro de nuevos alumnos (trigger on_auth_user_created con rol student)
+ *  ✔ Persistencia de sesión con Recordarme
+ *  ✔ Validación reactiva de campos
+ *  ✔ Retorno inmediato a la compra/carrito tras autenticarse
  */
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (session: SupabaseSession, profile: SupabaseProfile) -> Unit
+    onLoginSuccess: (session: SupabaseSession, profile: SupabaseProfile) -> Unit,
+    onSkipLogin: (() -> Unit)? = null
 ) {
-    val coroutineScope  = rememberCoroutineScope()
-    val focusManager    = LocalFocusManager.current
-    val passwordFocus   = remember { FocusRequester() }
+    // Interceptar botón atrás físico para regresar con seguridad al home/catálogo
+    BackHandler {
+        onSkipLogin?.invoke()
+    }
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val sessionManager = remember { SessionManager(context) }
+
+    val passwordFocus = remember { FocusRequester() }
+    val confirmPasswordFocus = remember { FocusRequester() }
+
+    // 0 = Iniciar Sesión, 1 = Registrarse
+    var authMode by remember { mutableIntStateOf(0) }
 
     // ── Estado del formulario ─────────────────────────────────────────────────
-    var email       by remember { mutableStateOf("") }
-    var password    by remember { mutableStateOf("") }
-    var rememberMe  by remember { mutableStateOf(false) }
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var rememberMe by remember { mutableStateOf(true) }
 
-    var emailTouched    by remember { mutableStateOf(false) }
+    var fullNameTouched by remember { mutableStateOf(false) }
+    var emailTouched by remember { mutableStateOf(false) }
     var passwordTouched by remember { mutableStateOf(false) }
+    var confirmPasswordTouched by remember { mutableStateOf(false) }
 
     var showPassword by remember { mutableStateOf(false) }
-    var isLoading    by remember { mutableStateOf(false) }
-    var errorMsg     by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf("") }
 
-    // ── Validaciones (idénticas al frontend web) ──────────────────────────────
+    // ── Validaciones de Seguridad (Práctica 5: AccesoSeguro) ───────────────────
+    val fullNameError = when {
+        authMode == 1 && fullNameTouched && fullName.isBlank() -> "Nombre es requerido"
+        authMode == 1 && fullNameTouched && fullName.trim().length < 3 -> "Mínimo 3 letras"
+        else -> ""
+    }
+
+    // Regla 2 y 3: Validar información, rechazar sólo espacios y longitud máxima
     val emailError = when {
-        emailTouched && email.isBlank()                    -> "Email es requerido"
-        emailTouched && !email.contains("@")               -> "Email inválido"
-        emailTouched && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Email inválido"
+        emailTouched && email.trim().isEmpty() -> "El usuario no puede estar vacío ni contener solo espacios"
+        emailTouched && email.length > MAX_USER_LENGTH -> "El usuario no puede superar los $MAX_USER_LENGTH caracteres"
+        authMode == 1 && emailTouched && (!email.contains("@") || !email.contains(".")) -> "Email inválido"
         else -> ""
     }
-    val passwordError = when {
-        passwordTouched && password.isBlank()   -> "Contraseña es requerida"
-        passwordTouched && password.length < 6  -> "Mínimo 6 caracteres"
-        else -> ""
-    }
-    val formValid = emailError.isEmpty() && passwordError.isEmpty()
-            && email.isNotBlank() && password.isNotBlank()
 
-    // ── Fondo degradado esmeralda igual al web ────────────────────────────────
+    // Regla 3 y adicional: Mínimo 8 caracteres, máximo 32, no vacío
+    val passwordError = when {
+        passwordTouched && password.isEmpty() -> "Contraseña es requerida"
+        passwordTouched && password.length < MIN_PASSWORD_LENGTH -> "La contraseña debe tener al menos $MIN_PASSWORD_LENGTH caracteres"
+        passwordTouched && password.length > MAX_PASSWORD_LENGTH -> "La contraseña no puede superar los $MAX_PASSWORD_LENGTH caracteres"
+        else -> ""
+    }
+
+    val confirmPasswordError = when {
+        authMode == 1 && confirmPasswordTouched && confirmPassword != password -> "Las contraseñas no coinciden"
+        else -> ""
+    }
+
+    val isFormValid = if (authMode == 0) {
+        emailError.isEmpty() && passwordError.isEmpty() && email.trim().isNotEmpty() && password.isNotEmpty()
+    } else {
+        fullNameError.isEmpty() && emailError.isEmpty() && passwordError.isEmpty() &&
+                confirmPasswordError.isEmpty() && fullName.isNotBlank() && email.trim().isNotEmpty() &&
+                password.isNotEmpty() && confirmPassword.isNotEmpty()
+    }
+
+    // ── Fondo degradado esmeralda corporativo ─────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -99,7 +145,7 @@ fun LoginScreen(
             ),
         contentAlignment = Alignment.Center
     ) {
-        // Orbes decorativas (equivalente a ::before / ::after del CSS)
+        // Orbes de ambientación
         Box(
             modifier = Modifier
                 .size(300.dp)
@@ -121,106 +167,257 @@ fun LoginScreen(
                 )
         )
 
-        // ── Tarjeta de Login ──────────────────────────────────────────────────
+        // ── Tarjeta de Autenticación ──────────────────────────────────────────
         Card(
-            shape     = RoundedCornerShape(20.dp),
-            colors    = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 24.dp),
-            modifier  = Modifier
+            modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 20.dp)
         ) {
             Column(
                 modifier = Modifier
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 28.dp, vertical = 32.dp),
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Logo / Marca
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(SkillEmerald),
-                    contentAlignment = Alignment.Center
+                // Barra superior de navegación / volver
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("SA", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                }
+                    if (onSkipLogin != null) {
+                        TextButton(
+                            onClick = onSkipLogin,
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Volver",
+                                tint = SkillNavy,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Volver a la tienda",
+                                color = SkillNavy,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(1.dp))
+                    }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text       = "Iniciar sesión",
-                    fontSize   = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    color      = SkillTextPrimary
-                )
-                Text(
-                    text       = "Accede a tu cuenta SkillAcademy",
-                    fontSize   = 13.sp,
-                    color      = SkillTextMuted,
-                    modifier   = Modifier.padding(top = 4.dp, bottom = 20.dp)
-                )
-
-                // ── Error global (igual que el div.error-message del HTML) ──
-                if (errorMsg.isNotBlank()) {
+                    // Insignia SkillAcademy
                     Surface(
-                        color  = Color(0xFFFEF2F2),
-                        shape  = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFCCFBF1)
                     ) {
                         Text(
-                            text     = errorMsg,
-                            color    = Color(0xFF8A2F21),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(12.dp)
+                            text = "SkillAcademy",
+                            color = SkillEmerald,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
-                    }
-                    Spacer(modifier = Modifier.height(14.dp))
-                }
-
-                // ── Campo Email ───────────────────────────────────────────────
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Email", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = SkillTextPrimary)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value         = email,
-                        onValueChange = { email = it; emailTouched = true; errorMsg = "" },
-                        modifier      = Modifier.fillMaxWidth(),
-                        placeholder   = { Text("correo@ejemplo.com", color = SkillTextMuted) },
-                        leadingIcon   = { Icon(Icons.Default.Email, null, tint = SkillTextMuted) },
-                        isError       = emailError.isNotEmpty(),
-                        singleLine    = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction    = ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(onNext = { passwordFocus.requestFocus() }),
-                        shape  = RoundedCornerShape(10.dp),
-                        colors = loginFieldColors()
-                    )
-                    if (emailError.isNotEmpty()) {
-                        Text(emailError, color = Color(0xFFC0392B), fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 3.dp))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // ── Campo Contraseña ──────────────────────────────────────────
+                // Selector de pestañas: Iniciar Sesión / Registrarse
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF1F5F9),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.padding(4.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (authMode == 0) Color.White else Color.Transparent)
+                                .clickable {
+                                    authMode = 0
+                                    errorMsg = ""
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Iniciar Sesión",
+                                fontWeight = if (authMode == 0) FontWeight.Bold else FontWeight.Medium,
+                                color = if (authMode == 0) SkillNavy else SkillTextMuted,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (authMode == 1) Color.White else Color.Transparent)
+                                .clickable {
+                                    authMode = 1
+                                    errorMsg = ""
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Crear Cuenta",
+                                fontWeight = if (authMode == 1) FontWeight.Bold else FontWeight.Medium,
+                                color = if (authMode == 1) SkillNavy else SkillTextMuted,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = if (authMode == 0) "¡Bienvenido de nuevo!" else "Únete a SkillAcademy",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                    color = SkillTextPrimary
+                )
+                Text(
+                    text = if (authMode == 0)
+                        "Inicia sesión para comprar y acceder a tus cursos."
+                    else
+                        "Crea tu cuenta de estudiante en un instante.",
+                    fontSize = 12.sp,
+                    color = SkillTextMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
+                )
+
+                // ── Mensaje de Error Global ──────────────────────────────────
+                if (errorMsg.isNotBlank()) {
+                    Surface(
+                        color = Color(0xFFFEF2F2),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = errorMsg,
+                            color = Color(0xFF8A2F21),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // ── Campo Nombre Completo (solo en registro) ──────────────────
+                if (authMode == 1) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text("Nombre Completo", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = SkillTextPrimary)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = fullName,
+                            onValueChange = { fullName = it; fullNameTouched = true; errorMsg = "" },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Ej: Laura Gómez", color = SkillTextMuted, fontSize = 13.sp) },
+                            leadingIcon = { Icon(Icons.Default.Person, null, tint = SkillTextMuted) },
+                            isError = fullNameError.isNotEmpty(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = loginFieldColors()
+                        )
+                        if (fullNameError.isNotEmpty()) {
+                            Text(fullNameError, color = Color(0xFFC0392B), fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 2.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // ── Campo Email / Usuario (Reglas 1, 2 y 3) ──────────────────────
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Contraseña", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = SkillTextPrimary)
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (authMode == 0) "Usuario o Email" else "Email",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = SkillTextPrimary
+                        )
+                        Text(
+                            text = "${email.length}/$MAX_USER_LENGTH",
+                            fontSize = 11.sp,
+                            color = if (email.length >= MAX_USER_LENGTH) Color(0xFFC0392B) else SkillTextMuted
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
-                        value         = password,
-                        onValueChange = { password = it; passwordTouched = true; errorMsg = "" },
-                        modifier      = Modifier
+                        value = email,
+                        onValueChange = {
+                            if (it.length <= MAX_USER_LENGTH) {
+                                email = it
+                                emailTouched = true
+                                errorMsg = ""
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("usuario o correo@ejemplo.com", color = SkillTextMuted, fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Default.Email, null, tint = SkillTextMuted) },
+                        isError = emailError.isNotEmpty(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(onNext = { passwordFocus.requestFocus() }),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = loginFieldColors()
+                    )
+                    if (emailError.isNotEmpty()) {
+                        Text(emailError, color = Color(0xFFC0392B), fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 2.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ── Campo Contraseña (Reglas 1, 3 y 4) ──────────────────────────
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Contraseña", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = SkillTextPrimary)
+                        Text(
+                            text = "${password.length}/$MAX_PASSWORD_LENGTH",
+                            fontSize = 11.sp,
+                            color = if (password.length >= MAX_PASSWORD_LENGTH) Color(0xFFC0392B) else SkillTextMuted
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = {
+                            if (it.length <= MAX_PASSWORD_LENGTH) {
+                                password = it
+                                passwordTouched = true
+                                errorMsg = ""
+                            }
+                        },
+                        modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(passwordFocus),
-                        placeholder   = { Text("Mínimo 6 caracteres", color = SkillTextMuted) },
-                        leadingIcon   = { Icon(Icons.Default.Lock, null, tint = SkillTextMuted) },
-                        trailingIcon  = {
+                        placeholder = { Text("Mínimo $MIN_PASSWORD_LENGTH caracteres", color = SkillTextMuted, fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = SkillTextMuted) },
+                        trailingIcon = {
                             IconButton(onClick = { showPassword = !showPassword }) {
                                 Icon(
                                     if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
@@ -229,167 +426,260 @@ fun LoginScreen(
                                 )
                             }
                         },
-                        visualTransformation = if (showPassword) VisualTransformation.None
-                                               else PasswordVisualTransformation(),
+                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         isError = passwordError.isNotEmpty(),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
-                            imeAction    = ImeAction.Done
+                            imeAction = if (authMode == 1) ImeAction.Next else ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                        shape  = RoundedCornerShape(10.dp),
+                        keyboardActions = KeyboardActions(
+                            onNext = { confirmPasswordFocus.requestFocus() },
+                            onDone = { focusManager.clearFocus() }
+                        ),
+                        shape = RoundedCornerShape(10.dp),
                         colors = loginFieldColors()
                     )
                     if (passwordError.isNotEmpty()) {
-                        Text(passwordError, color = Color(0xFFC0392B), fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 3.dp))
+                        Text(passwordError, color = Color(0xFFC0392B), fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 2.dp))
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // ── Recordarme + ¿Olvidaste tu contraseña? ───────────────────
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked  = rememberMe,
-                        onCheckedChange = { rememberMe = it },
-                        colors   = CheckboxDefaults.colors(checkedColor = SkillEmerald)
-                    )
-                    Text("Recordarme", fontSize = 13.sp, color = SkillTextSecondary,
-                        modifier = Modifier.weight(1f))
-                    TextButton(onClick = {}) {
-                        Text("¿Olvidaste tu contraseña?", color = Color(0xFF047857),
-                            fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                // ── Campo Confirmar Contraseña (solo en registro) ────────────
+                if (authMode == 1) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text("Confirmar Contraseña", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = SkillTextPrimary)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it; confirmPasswordTouched = true; errorMsg = "" },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(confirmPasswordFocus),
+                            placeholder = { Text("Repite tu contraseña", color = SkillTextMuted, fontSize = 13.sp) },
+                            leadingIcon = { Icon(Icons.Default.Lock, null, tint = SkillTextMuted) },
+                            visualTransformation = PasswordVisualTransformation(),
+                            isError = confirmPasswordError.isNotEmpty(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = loginFieldColors()
+                        )
+                        if (confirmPasswordError.isNotEmpty()) {
+                            Text(confirmPasswordError, color = Color(0xFFC0392B), fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 2.dp))
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // ── Botón Iniciar Sesión ───────────────────────────────────────
+                // ── Recordarme (en login) ────────────────────────────────────
+                if (authMode == 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = rememberMe,
+                            onCheckedChange = { rememberMe = it },
+                            colors = CheckboxDefaults.colors(checkedColor = SkillEmerald)
+                        )
+                        Text("Recordarme", fontSize = 13.sp, color = SkillTextSecondary,
+                            modifier = Modifier.weight(1f))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ── Botón Principal de Acción ────────────────────────────────
                 Button(
                     onClick = {
-                        emailTouched    = true
+                        emailTouched = true
                         passwordTouched = true
-                        if (!formValid || isLoading) return@Button
+                        if (authMode == 1) {
+                            fullNameTouched = true
+                            confirmPasswordTouched = true
+                        }
+
+                        // Requisito 6: Evitar imprimir contraseñas u otros datos confidenciales en Logcat
+                        Log.i("AccesoSeguro", "=== Evento de Autenticación ===")
+                        Log.i("AccesoSeguro", "Validando usuario (longitud: ${email.trim().length} car.)")
+                        Log.i("AccesoSeguro", "MEDIDA DE SEGURIDAD: La contraseña se procesa en memoria y NUNCA se registra en Logcat.")
+
+                        if (!isFormValid || isLoading) {
+                            Log.w("AccesoSeguro", "Validación local rechazada: Entradas no cumplen con los requisitos de seguridad.")
+                            return@Button
+                        }
+                        Log.i("AccesoSeguro", "Validación local exitosa. Iniciando comprobación de credenciales...")
+
                         focusManager.clearFocus()
                         isLoading = true
-                        errorMsg  = ""
+                        errorMsg = ""
 
                         coroutineScope.launch {
-                            // 1) Login vía Supabase Auth (igual que signIn en auth.service.ts)
-                            val authResult = AuthRepository.signIn(email.trim(), password)
-                            if (!authResult.isSuccess) {
-                                errorMsg  = mapAuthError(authResult.error ?: "")
-                                isLoading = false
-                                return@launch
-                            }
-                            val session = authResult.data!!
+                            if (authMode == 0) {
+                                // Requisito 7: Mostrar mensaje de acceso simulado cuando los datos de prueba sean válidos
+                                val isSimulatedUser = email.trim().equals("admin@seguro.com", ignoreCase = true) ||
+                                        email.trim().equals("usuario_prueba", ignoreCase = true) ||
+                                        email.trim().equals("estudiante@seguro.com", ignoreCase = true)
+                                if (isSimulatedUser && (password == "Seguro1234#" || password == "12345678" || password == "Password123#")) {
+                                    Log.i("AccesoSeguro", "Acceso simulado concedido para usuario de prueba. Credenciales de prueba válidas.")
+                                    val simSession = SupabaseSession(
+                                        accessToken = "simulated_secure_token_${System.currentTimeMillis()}",
+                                        userId = "simulated-test-user-001",
+                                        email = email.trim()
+                                    )
+                                    val simProfile = SupabaseProfile(
+                                        id = "simulated-test-user-001",
+                                        email = email.trim(),
+                                        fullName = "Usuario de Prueba Seguro",
+                                        roleId = "student",
+                                        isActive = true,
+                                        avatarUrl = null
+                                    )
+                                    sessionManager.saveSession(simSession, simProfile, rememberMe)
+                                    isLoading = false
+                                    Toast.makeText(context, "¡Acceso simulado concedido! Bienvenido al sistema seguro.", Toast.LENGTH_LONG).show()
+                                    onLoginSuccess(simSession, simProfile)
+                                    return@launch
+                                }
 
-                            // 2) Cargar perfil con role_id (igual que loadProfile)
-                            val profileResult = AuthRepository.loadProfile(session.userId, session.accessToken)
-                            if (!profileResult.isSuccess) {
-                                errorMsg  = "No se pudo cargar el perfil. Intenta de nuevo."
-                                isLoading = false
-                                return@launch
-                            }
-                            val profile = profileResult.data!!
+                                // 1) Login real contra Supabase
+                                val authResult = AuthRepository.signIn(email.trim(), password)
+                                if (!authResult.isSuccess) {
+                                    Log.w("AccesoSeguro", "Fallo de autenticación. Mostrando mensaje genérico para mitigar enumeración de usuarios.")
+                                    errorMsg = mapAuthError(authResult.error ?: "")
+                                    isLoading = false
+                                    return@launch
+                                }
+                                val session = authResult.data!!
+                                Log.i("AccesoSeguro", "Autenticación exitosa. Credenciales verificadas sin fugas en logs.")
 
-                            // 3) Verificar cuenta activa
-                            if (!profile.isActive) {
-                                errorMsg  = "Tu cuenta está inactiva. Contacta al administrador."
-                                isLoading = false
-                                return@launch
-                            }
+                                val profileResult = AuthRepository.loadProfile(session.userId, session.accessToken)
+                                val profile = profileResult.data ?: SupabaseProfile(
+                                    id = session.userId,
+                                    email = session.email,
+                                    fullName = email.substringBefore("@"),
+                                    roleId = "student",
+                                    isActive = true,
+                                    avatarUrl = null
+                                )
 
-                            isLoading = false
-                            onLoginSuccess(session, profile)
+                                if (!profile.isActive) {
+                                    errorMsg = "Acceso denegado. Comuníquese con el administrador."
+                                    isLoading = false
+                                    return@launch
+                                }
+
+                                sessionManager.saveSession(session, profile, rememberMe)
+                                isLoading = false
+                                Toast.makeText(context, "¡Acceso concedido! Bienvenido al sistema seguro.", Toast.LENGTH_SHORT).show()
+                                onLoginSuccess(session, profile)
+                            } else {
+                                // 2) Registro
+                                val regResult = AuthRepository.signUp(email.trim(), password, fullName.trim())
+                                if (!regResult.isSuccess) {
+                                    errorMsg = mapAuthError(regResult.error ?: "")
+                                    isLoading = false
+                                    return@launch
+                                }
+                                val session = regResult.data!!
+
+                                val profileResult = AuthRepository.loadProfile(session.userId, session.accessToken)
+                                val profile = profileResult.data ?: SupabaseProfile(
+                                    id = session.userId,
+                                    email = session.email,
+                                    fullName = fullName.trim(),
+                                    roleId = "student",
+                                    isActive = true,
+                                    avatarUrl = null
+                                )
+
+                                sessionManager.saveSession(session, profile, true)
+                                isLoading = false
+                                Toast.makeText(context, "¡Cuenta creada exitosamente!", Toast.LENGTH_SHORT).show()
+                                onLoginSuccess(session, profile)
+                            }
                         }
                     },
-                    enabled  = !isLoading,
-                    shape    = RoundedCornerShape(12.dp),
-                    colors   = ButtonDefaults.buttonColors(
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
                         containerColor = SkillEmerald,
                         disabledContainerColor = SkillEmerald.copy(alpha = 0.6f)
                     ),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
-                            color  = Color.White,
+                            color = Color.White,
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text("Entrando...", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(if (authMode == 0) "Iniciando sesión..." else "Registrando...", fontWeight = FontWeight.Bold, color = Color.White)
                     } else {
-                        Text("Iniciar Sesión", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                        Text(
+                            text = if (authMode == 0) "Iniciar Sesión" else "Crear Cuenta",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = Color.White
+                        )
                     }
-                }
-
-                Spacer(modifier = Modifier.height(22.dp))
-
-                // ── Divisor ───────────────────────────────────────────────────
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = SkillBorder)
-                    Text("  o  ", color = SkillTextMuted, fontSize = 13.sp)
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = SkillBorder)
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // ── Botón Google (deshabilitado, igual que en el web) ─────────
-                OutlinedButton(
-                    onClick  = {},
-                    enabled  = false,
-                    shape    = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().height(46.dp),
-                    border   = ButtonDefaults.outlinedButtonBorder
-                ) {
-                    Text("G  Continuar con Google", fontWeight = FontWeight.Bold, color = SkillTextMuted)
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // ── ¿No tienes cuenta? ────────────────────────────────────────
+                // Alternar entre Login y Registro al pie
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("¿No tienes cuenta? ", color = SkillTextMuted, fontSize = 13.sp)
-                    Text("Registrarse", color = SkillEmerald, fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp)
+                    Text(
+                        text = if (authMode == 0) "¿No tienes cuenta? " else "¿Ya tienes cuenta? ",
+                        color = SkillTextMuted,
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        text = if (authMode == 0) "Regístrate aquí" else "Inicia sesión",
+                        color = SkillEmerald,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        modifier = Modifier.clickable {
+                            authMode = if (authMode == 0) 1 else 0
+                            errorMsg = ""
+                        }
+                    )
                 }
             }
         }
     }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Convierte errores de Supabase Auth al mismo mensaje que usa el frontend web. */
+// Requisito 5: Mostrar mensajes de error genéricos, sin revelar datos sensibles
 private fun mapAuthError(msg: String): String = when {
     msg.contains("Invalid login credentials") || msg.contains("invalid_credentials") ->
-        "Email o contraseña incorrectos"
-    msg.contains("Email not confirmed") ->
-        "Confirma tu email antes de entrar"
-    msg.contains("account_disabled") || msg.contains("inactive") ->
-        "Tu cuenta está inactiva. Contacta al administrador."
+        "Usuario o contraseña incorrectos. Por favor, verifique sus datos."
+    msg.contains("User already registered") || msg.contains("user_already_exists") ->
+        "No se pudo completar el registro. Verifique sus datos o intente iniciar sesión."
+    msg.contains("Network") || msg.contains("timeout") || msg.contains("Unable to resolve") ->
+        "Error de conexión con el servidor. Intente nuevamente más tarde."
     else ->
-        "Error al iniciar sesión. Intenta de nuevo."
+        "Acceso no autorizado. Verifique sus credenciales e intente de nuevo."
 }
 
 @Composable
 private fun loginFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor   = SkillEmerald,
+    focusedBorderColor = SkillEmerald,
     unfocusedBorderColor = SkillBorder,
-    errorBorderColor     = Color(0xFFC0392B),
-    focusedLabelColor    = SkillEmerald,
-    cursorColor          = SkillEmerald
+    errorBorderColor = Color(0xFFC0392B),
+    focusedLabelColor = SkillEmerald,
+    cursorColor = SkillEmerald
 )

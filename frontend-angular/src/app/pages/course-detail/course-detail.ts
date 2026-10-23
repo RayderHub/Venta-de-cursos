@@ -96,8 +96,38 @@ export class CourseDetail {
     }
   }
 
+  readonly currentImageIndex = signal(0);
+  readonly allImages = computed(() => {
+    const c = this.course();
+    if (c?.imagenesGaleria && c.imagenesGaleria.length > 0) {
+      return c.imagenesGaleria;
+    }
+    return [courseImagePath(c?.image ?? 'code')];
+  });
+  readonly currentImage = computed(() => {
+    const list = this.allImages();
+    const idx = this.currentImageIndex();
+    return list[idx] || list[0] || courseImagePath('code');
+  });
+
   imageSrc(): string {
-    return courseImagePath(this.course()?.image ?? 'code');
+    return this.currentImage();
+  }
+
+  prevImage(): void {
+    const total = this.allImages().length;
+    if (total <= 1) return;
+    this.currentImageIndex.update((i) => (i - 1 + total) % total);
+  }
+
+  nextImage(): void {
+    const total = this.allImages().length;
+    if (total <= 1) return;
+    this.currentImageIndex.update((i) => (i + 1) % total);
+  }
+
+  setImage(index: number): void {
+    this.currentImageIndex.set(index);
   }
 
   async comprar(): Promise<void> {

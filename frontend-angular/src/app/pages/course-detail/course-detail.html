@@ -6,8 +6,18 @@
 
     <section class="detail-hero">
       <div class="hero-info">
-        <div class="video-card">
-          <img [src]="imageSrc()" [alt]="course.title">
+        <div class="video-card carousel-container">
+          <img [src]="imageSrc()" [alt]="course.title" class="carousel-img">
+          @if (allImages().length > 1) {
+            <button class="carousel-btn prev-btn" (click)="prevImage()" title="Imagen anterior" type="button">&#10094;</button>
+            <button class="carousel-btn next-btn" (click)="nextImage()" title="Siguiente imagen" type="button">&#10095;</button>
+            <div class="carousel-dots">
+              @for (img of allImages(); track $index) {
+                <span class="dot" [class.active]="$index === currentImageIndex()" (click)="setImage($index)"></span>
+              }
+            </div>
+            <div class="carousel-counter">{{ currentImageIndex() + 1 }} / {{ allImages().length }}</div>
+          }
         </div>
       </div>
 
@@ -51,6 +61,10 @@
           <h2>Descripcion</h2>
           <p class="course-meta">{{ course.level }} - {{ course.category }}</p>
           <p>{{ course.description || 'Este curso aun no tiene descripcion.' }}</p>
+          @if (course.queAprenderas) {
+            <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 1.1rem; color: #0f172a;">¿Qué aprenderás?</h3>
+            <p style="white-space: pre-line; line-height: 1.6; color: #334155;">{{ course.queAprenderas }}</p>
+          }
         }
 
         @if (activeTab() === 'lecciones') {
@@ -74,7 +88,7 @@
 
         @if (activeTab() === 'requisitos') {
           <h2>Requisitos</h2>
-          <p>Los requisitos se configuraran desde el contenido del curso.</p>
+          <p style="white-space: pre-line; line-height: 1.6; color: #334155;">{{ course.requisitos || 'No se requieren conocimientos previos específicos para este curso. Ganas de aprender y una computadora con conexión a internet.' }}</p>
         }
       </article>
 

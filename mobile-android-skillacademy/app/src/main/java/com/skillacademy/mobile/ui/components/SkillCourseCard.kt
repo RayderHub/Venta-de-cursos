@@ -39,33 +39,31 @@ fun SkillCourseCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-            // Cabecera de Imagen / Portada estilizada
-            val gradientBrush = when (curso.categoria.lowercase()) {
-                "excel" -> Brush.verticalGradient(listOf(Color(0xFF065F46), Color(0xFF047857)))
-                "programación", "programacion" -> Brush.verticalGradient(listOf(Color(0xFF1E3A8A), Color(0xFF2563EB)))
-                "diseño", "diseno" -> Brush.verticalGradient(listOf(Color(0xFF6B21A8), Color(0xFF9333EA)))
-                else -> Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF334155)))
-            }
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(130.dp)
-                    .background(gradientBrush),
-                contentAlignment = Alignment.Center
             ) {
-                // Icono temático central
-                Text(
-                    text = when (curso.categoria.lowercase()) {
-                        "excel" -> "📊 EXCEL"
-                        "programación", "programacion" -> "💻 CODE"
-                        "diseño", "diseno" -> "🎨 DESIGN"
-                        else -> "⚡ SKILL"
-                    },
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontWeight = FontWeight.Black,
-                    fontSize = 20.sp,
-                    letterSpacing = 2.sp
+                // Miniatura real agregada por el profesor (Base64, URL o Tema)
+                CourseImage(
+                    imageSource = curso.imagen,
+                    contentDescription = curso.titulo,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Sombra suave en los bordes para resaltar badges
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.45f),
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.35f)
+                                )
+                            )
+                        )
                 )
 
                 // Badge de descuento (-XX%)
@@ -93,7 +91,7 @@ fun SkillCourseCard(
                         .align(Alignment.TopEnd)
                         .padding(10.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.5f))
+                        .background(Color.Black.copy(alpha = 0.65f))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
