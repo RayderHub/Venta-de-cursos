@@ -7,7 +7,7 @@ const {
 } = require('./elasticsearch_service');
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://uudjczjsobvqpyvuarhk.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'sb_publishable_uivXUxKRnq7zc0TYmLoBGQ_uXf4q2Jf';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1ZGpjempzb2J2cXB5dnVhcmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5Njc4NTksImV4cCI6MjEwMTU0Mzg1OX0.czxrebaQNQ5UgctU7kLjL2l2HsaBWHmwhgQvANNZlDI';
 
 const smartTvWidget = {
   titulo: 'Oferta Especial',

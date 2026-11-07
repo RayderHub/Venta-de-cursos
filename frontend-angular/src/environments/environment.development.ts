@@ -1,4 +1,4 @@
 export const environment = {
   supabaseUrl: 'https://uudjczjsobvqpyvuarhk.supabase.co',
-  supabaseAnonKey: 'sb_publishable_uivXUxKRnq7zc0TYmLoBGQ_uXf4q2Jf'
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1ZGpjempzb2J2cXB5dnVhcmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5Njc4NTksImV4cCI6MjEwMTU0Mzg1OX0.czxrebaQNQ5UgctU7kLjL2l2HsaBWHmwhgQvANNZlDI'
 };
