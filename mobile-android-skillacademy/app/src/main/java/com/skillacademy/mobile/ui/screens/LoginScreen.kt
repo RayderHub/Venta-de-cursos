@@ -97,6 +97,10 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf("") }
 
+    // Control antifuerza bruta bajo ISO 27001 A.8.5 (Entregable 5)
+    var failedAttempts by remember { mutableIntStateOf(0) }
+    var lockoutSeconds by remember { mutableIntStateOf(0) }
+
     // ── Validaciones de Seguridad (Práctica 5: AccesoSeguro) ───────────────────
     val fullNameError = when {
         authMode == 1 && fullNameTouched && fullName.isBlank() -> "Nombre es requerido"
@@ -554,11 +558,30 @@ fun LoginScreen(
                                 // 1) Login real contra Supabase
                                 val authResult = AuthRepository.signIn(email.trim(), password)
                                 if (!authResult.isSuccess) {
-                                    Log.w("AccesoSeguro", "Fallo de autenticación. Mostrando mensaje genérico para mitigar enumeración de usuarios.")
-                                    errorMsg = mapAuthError(authResult.error ?: "")
+                                    failedAttempts++
+                                    Log.w("AccesoSeguro", "Fallo de autenticación (intento $failedAttempts).")
+                                    if (failedAttempts >= 5) {
+                                        lockoutSeconds = 30
+                                        errorMsg = "Demasiados intentos fallidos. Intenta nuevamente en 30 segundos."
+                                        coroutineScope.launch {
+                                            while (lockoutSeconds > 0) {
+                                                kotlinx.coroutines.delay(1000)
+                                                lockoutSeconds--
+                                                if (lockoutSeconds > 0) {
+                                                    errorMsg = "Demasiados intentos fallidos. Intenta nuevamente en $lockoutSeconds segundos."
+                                                } else {
+                                                    errorMsg = ""
+                                                    failedAttempts = 0
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        errorMsg = mapAuthError(authResult.error ?: "")
+                                    }
                                     isLoading = false
                                     return@launch
                                 }
+                                failedAttempts = 0
                                 val session = authResult.data!!
                                 Log.i("AccesoSeguro", "Autenticación exitosa. Credenciales verificadas sin fugas en logs.")
 
@@ -609,7 +632,7 @@ fun LoginScreen(
                             }
                         }
                     },
-                    enabled = !isLoading,
+                    enabled = !isLoading && lockoutSeconds == 0,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = SkillEmerald,
@@ -669,10 +692,15 @@ private fun mapAuthError(msg: String): String = when {
         "Usuario o contraseña incorrectos. Por favor, verifique sus datos."
     msg.contains("User already registered") || msg.contains("user_already_exists") ->
         "No se pudo completar el registro. Verifique sus datos o intente iniciar sesión."
-    msg.contains("Network") || msg.contains("timeout") || msg.contains("Unable to resolve") ->
+    msg.contains("Network") || msg.contains("timeout") || msg.contains("Unable to resolve")
+        || msg.contains("failed to connect") || msg.contains("Connection refused")
+        || msg.contains("SSL") || msg.contains("SSLHandshake") || msg.contains("CertPath")
+        || msg.contains("ECONNREFUSED") || msg.contains("SocketException") ->
         "Error de conexión con el servidor. Intente nuevamente más tarde."
+    msg.contains("HTTP 4") ->
+        "Usuario o contraseña incorrectos. Por favor, verifique sus datos."
     else ->
-        "Acceso no autorizado. Verifique sus credenciales e intente de nuevo."
+        "Error inesperado. Intente de nuevo."
 }
 
 @Composable

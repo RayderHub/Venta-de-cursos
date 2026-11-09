@@ -1,5 +1,7 @@
 package com.skillacademy.mobile.ui.components
 
+import android.app.Activity
+import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +49,21 @@ fun PaymentGatewayBottomSheet(
     onPaymentConfirmed: (orderNumber: String, paymentMethod: String) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // ISO 27001 A.8.11 / A.8.12: Blindaje de pasarela con FLAG_SECURE
+    // Bloquea capturas de pantalla y grabadores mientras el bottom sheet esté visible
+    DisposableEffect(Unit) {
+        val activity = context as? Activity
+        activity?.window?.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
+        onDispose {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
     var selectedMethod by remember { mutableStateOf("card") } // "card" | "gpay" | "instant"
     var cardNumber by remember { mutableStateOf("4242 4242 4242 4242") }
     var cardExpiry by remember { mutableStateOf("12/28") }

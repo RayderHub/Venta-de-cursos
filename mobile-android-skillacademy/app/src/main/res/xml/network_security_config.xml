@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    res/xml/network_security_config.xml
+    Blindaje de Red bajo ISO/IEC 27001:2022 A.8.20 / A.8.24
+    - Bloqueo total de Cleartext Traffic (HTTP plano) en todos los dominios
+    - Certificate Pinning reservado para build de producción (Release)
+      requiere hash SPKI SHA-256 del DER completo via:
+      openssl s_client -connect <host>:443 | openssl x509 -noout -pubkey |
+      openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | base64
+-->
+<network-security-config>
+    <!-- Forzar HTTPS estricto en todos los dominios del proyecto -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">supabase.co</domain>
+        <domain includeSubdomains="true">uudjczjsobvqpyvuarhk.supabase.co</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+    <!-- Política global: bloquear HTTP plano en cualquier otro dominio -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+

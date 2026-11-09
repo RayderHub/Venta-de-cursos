@@ -23,7 +23,8 @@ export interface CursoIndexado {
 
 @Injectable({ providedIn: 'root' })
 export class ElasticsearchService {
-  private readonly base = '/api/cursos/search';
+  private readonly relativeBase = '/api/cursos/search';
+  private readonly directBase = 'https://skillacademy-backend-at8o.onrender.com/api/cursos/search';
 
   private aCourse(c: CursoIndexado): Course {
     return {
@@ -45,13 +46,30 @@ export class ElasticsearchService {
   async buscar(q: string): Promise<BusquedaResultado> {
     const params = new URLSearchParams();
     if (q.trim()) params.set('q', q.trim());
+    const queryStr = params.toString() ? `?${params.toString()}` : '';
 
-    const response = await fetch(`${this.base}?${params.toString()}`);
-    if (!response.ok) {
-      throw new Error(`Buscador respondio ${response.status}`);
+    let body: any = null;
+
+    // 1. Intentar vía rewrite de Vercel
+    try {
+      const res = await fetch(`${this.relativeBase}${queryStr}`);
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        body = await res.json();
+      }
+    } catch {
+      // Ignorar y pasar a conexión directa
     }
 
-    const body = await response.json();
+    // 2. Si falló o devolvió HTML de SPA, consultar directo al backend en Render
+    if (!body || !Array.isArray(body.cursos)) {
+      const directRes = await fetch(`${this.directBase}${queryStr}`);
+      if (!directRes.ok) {
+        throw new Error(`Buscador respondio ${directRes.status}`);
+      }
+      body = await directRes.json();
+    }
+
     const cursos = Array.isArray(body.cursos) ? body.cursos.map((c: CursoIndexado) => this.aCourse(c)) : [];
     return { total: Number(body.total) || cursos.length, cursos };
   }

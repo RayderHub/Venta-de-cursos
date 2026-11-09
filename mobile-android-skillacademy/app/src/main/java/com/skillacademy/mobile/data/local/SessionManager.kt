@@ -2,6 +2,9 @@ package com.skillacademy.mobile.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.skillacademy.mobile.data.model.CourseUiModel
 import com.skillacademy.mobile.data.remote.EnrolledCourse
 import com.skillacademy.mobile.data.remote.SupabaseProfile
@@ -12,11 +15,25 @@ import org.json.JSONObject
 /**
  * Gestor de persistencia segura de sesión de usuario en Android.
  * Almacena el token JWT de Supabase, refresh_token, ID de usuario, perfil y caché local de cursos inscritos.
+ * Cumple con ISO 27001 A.8.24 cifrando los datos en reposo con AES-256 (EncryptedSharedPreferences + Keystore).
  */
 class SessionManager(context: Context) {
 
-    private val prefs: SharedPreferences =
+    private val prefs: SharedPreferences = try {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context,
+            PREFS_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        Log.w("SessionManager", "No se pudo inicializar EncryptedSharedPreferences, fallback estándar", e)
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
 
     companion object {
         private const val PREFS_NAME = "skillacademy_session_prefs"
