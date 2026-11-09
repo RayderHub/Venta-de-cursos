@@ -1,47 +1,60 @@
-const { Client } = require('@elastic/elasticsearch');
-
 const supabaseUrl = process.env.SUPABASE_URL || 'https://uudjczjsobvqpyvuarhk.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'sb_publishable_uivXUxKRnq7zc0TYmLoBGQ_uXf4q2Jf';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1ZGpjempzb2J2cXB5dnVhcmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5Njc4NTksImV4cCI6MjEwMTU0Mzg1OX0.czxrebaQNQ5UgctU7kLjL2l2HsaBWHmwhgQvANNZlDI';
 
-const rawElasticsearchUrl = process.env.ELASTICSEARCH_URL || 'http://localhost:9200';
+const rawElasticsearchUrl = process.env.ELASTICSEARCH_URL || 'https://033722bf76:5439d2352b6e3c4a035c@determined-alder-1tpnwhzm.us-east-1.bonsaisearch.net';
 const ELASTICSEARCH_URL = /^https?:\/\//i.test(rawElasticsearchUrl) ? rawElasticsearchUrl : `http://${rawElasticsearchUrl}`;
 const INDEX_NAME = process.env.ELASTICSEARCH_INDEX || 'skillacademy_cursos';
 
-let client = null;
-
-function getClient() {
-  if (!client) {
-    client = new Client({ node: ELASTICSEARCH_URL });
+// Helper HTTP universal que soporta tanto Elasticsearch como OpenSearch (Bonsai.io)
+function getEsConfig() {
+  const parsed = new URL(ELASTICSEARCH_URL);
+  const baseUrl = parsed.origin;
+  const headers = { 'Content-Type': 'application/json' };
+  if (parsed.username || parsed.password) {
+    headers['Authorization'] = 'Basic ' + Buffer.from(`${decodeURIComponent(parsed.username)}:${decodeURIComponent(parsed.password)}`).toString('base64');
   }
-  return client;
+  return { baseUrl, headers };
+}
+
+async function esFetch(path, options = {}) {
+  const { baseUrl, headers: defaultHeaders } = getEsConfig();
+  const url = `${baseUrl}${path.startsWith('/') ? path : '/' + path}`;
+  const headers = { ...defaultHeaders, ...(options.headers || {}) };
+  return fetch(url, { ...options, headers });
 }
 
 async function asegurarIndice() {
-  const es = getClient();
-  const existe = await es.indices.exists({ index: INDEX_NAME });
+  try {
+    const res = await esFetch(`/${INDEX_NAME}`, { method: 'HEAD' });
+    if (res.status === 200) return true;
 
-  if (existe) return true;
-
-  await es.indices.create({
-    index: INDEX_NAME,
-    mappings: {
-      properties: {
-        id: { type: 'long' },
-        titulo: { type: 'text', analyzer: 'standard', fields: { keyword: { type: 'keyword' } } },
-        categoria: { type: 'text', analyzer: 'standard', fields: { keyword: { type: 'keyword' } } },
-        nivel: { type: 'text', analyzer: 'standard', fields: { keyword: { type: 'keyword' } } },
-        instructor: { type: 'text', analyzer: 'standard', fields: { keyword: { type: 'keyword' } } },
-        instructor_id: { type: 'keyword' },
-        precio: { type: 'float' },
-        old_precio: { type: 'float' },
-        imagen: { type: 'keyword' },
-        descripcion: { type: 'text', analyzer: 'standard' },
-        rating: { type: 'float' },
-        reviews: { type: 'integer' }
-      }
-    }
-  });
-  return false;
+    // Crear índice si no existe
+    const createRes = await esFetch(`/${INDEX_NAME}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        mappings: {
+          properties: {
+            id: { type: 'long' },
+            titulo: { type: 'text', analyzer: 'standard', fields: { keyword: { type: 'keyword' } } },
+            categoria: { type: 'text', analyzer: 'standard', fields: { keyword: { type: 'keyword' } } },
+            nivel: { type: 'text', analyzer: 'standard', fields: { keyword: { type: 'keyword' } } },
+            instructor: { type: 'text', analyzer: 'standard', fields: { keyword: { type: 'keyword' } } },
+            instructor_id: { type: 'keyword' },
+            precio: { type: 'float' },
+            old_precio: { type: 'float' },
+            imagen: { type: 'keyword' },
+            descripcion: { type: 'text', analyzer: 'standard' },
+            rating: { type: 'float' },
+            reviews: { type: 'integer' }
+          }
+        }
+      })
+    });
+    return createRes.ok;
+  } catch (err) {
+    console.error('Error al asegurar índice:', err.message);
+    return false;
+  }
 }
 
 async function listarCursosSupabase() {
@@ -67,16 +80,15 @@ async function listarCursosSupabase() {
 
 async function indexarCursos() {
   await asegurarIndice();
-
   const cursos = await listarCursosSupabase();
   if (cursos.length === 0) {
     return { indexado: 0, total: 0 };
   }
 
-  const es = getClient();
-  const operaciones = cursos.flatMap((curso) => [
-    { index: { _index: INDEX_NAME, _id: String(curso.id) } },
-    {
+  let bulkLines = '';
+  for (const curso of cursos) {
+    bulkLines += JSON.stringify({ index: { _index: INDEX_NAME, _id: String(curso.id) } }) + '\n';
+    bulkLines += JSON.stringify({
       id: curso.id,
       titulo: curso.titulo,
       categoria: curso.categoria,
@@ -89,32 +101,45 @@ async function indexarCursos() {
       descripcion: curso.descripcion || '',
       rating: Number(curso.rating) || 0,
       reviews: curso.reviews || 0
-    }
-  ]);
+    }) + '\n';
+  }
 
-  const resultado = await es.bulk({ operations: operaciones, refresh: true });
-  const fallidos = resultado.items.filter((item) => item.index && item.index.error).length;
+  const res = await esFetch(`/${INDEX_NAME}/_bulk?refresh=true`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-ndjson' },
+    body: bulkLines
+  });
+
+  if (!res.ok) {
+    throw new Error(`Bonsai/ES bulk fallo con status ${res.status}`);
+  }
+
+  const data = await res.json();
+  const fallidos = (data.items || []).filter(item => item.index && item.index.error).length;
 
   return { indexado: cursos.length - fallidos, total: cursos.length, fallidos };
 }
 
 async function reindexarSiVacio() {
-  await asegurarIndice();
-
-  const es = getClient();
-  const total = await es.count({ index: INDEX_NAME });
-
-  if (total.count === 0) {
-    return indexarCursos();
+  try {
+    await asegurarIndice();
+    const res = await esFetch(`/${INDEX_NAME}/_count`);
+    if (res.ok) {
+      const data = await res.json();
+      if ((data.count || 0) === 0) {
+        return indexarCursos();
+      }
+      return { indexado: 0, total: data.count };
+    }
+  } catch (err) {
+    console.warn('Advertencia en reindexarSiVacio:', err.message);
   }
-
-  return { indexado: 0, total: total.count };
+  return { indexado: 0, total: 0 };
 }
 
 async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
   await reindexarSiVacio();
 
-  const es = getClient();
   const consulta = q && q.trim()
     ? {
         bool: {
@@ -129,47 +154,58 @@ async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
       }
     : { match_all: {} };
 
-  let response;
   try {
-    response = await es.search({
-      index: INDEX_NAME,
-      from: desde,
-      size: tamaño,
-      query: consulta
+    const res = await esFetch(`/${INDEX_NAME}/_search`, {
+      method: 'POST',
+      body: JSON.stringify({
+        from: desde,
+        size: tamaño,
+        query: consulta
+      })
     });
-  } catch (error) {
-    if (!['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'socket hang up'].includes(error.message)) throw error;
 
-    const es2 = new Client({ node: ELASTICSEARCH_URL });
-    response = await es2.search({
-      index: INDEX_NAME,
-      from: desde,
-      size: tamaño,
-      query: consulta
-    });
+    if (!res.ok) {
+      throw new Error(`ES respondio ${res.status}`);
+    }
+
+    const data = await res.json();
+    const hits = (data.hits?.hits || []).map(hit => ({
+      _score: hit._score ?? 0,
+      ...hit._source
+    }));
+
+    const total = typeof data.hits?.total === 'object' ? data.hits.total.value : (data.hits?.total ?? hits.length);
+
+    return { total, cursos: hits };
+  } catch (err) {
+    console.warn('Fallo en busqueda Elasticsearch/Bonsai, ejecutando fallback Supabase:', err.message);
+    const todos = await listarCursosSupabase();
+    const filtrados = q && q.trim()
+      ? todos.filter(c => 
+          (c.titulo && c.titulo.toLowerCase().includes(q.toLowerCase())) ||
+          (c.instructor && c.instructor.toLowerCase().includes(q.toLowerCase())) ||
+          (c.categoria && c.categoria.toLowerCase().includes(q.toLowerCase())) ||
+          (c.descripcion && c.descripcion.toLowerCase().includes(q.toLowerCase()))
+        )
+      : todos;
+
+    return {
+      total: filtrados.length,
+      cursos: filtrados.slice(desde, desde + tamaño)
+    };
   }
-
-  const hits = response.hits.hits.map((hit) => ({
-    _score: hit._score ?? 0,
-    ...hit._source
-  }));
-
-  return {
-    total: typeof response.hits.total === 'object' ? response.hits.total.value : response.hits.total,
-    cursos: hits
-  };
 }
 
 async function reiniciarIndice() {
-  const es = getClient();
-  await es.indices.delete({ index: INDEX_NAME }, { ignore: [404] });
+  try {
+    await esFetch(`/${INDEX_NAME}`, { method: 'DELETE' });
+  } catch (_) {}
   return indexarCursos();
 }
 
 module.exports = {
   ELASTICSEARCH_URL,
   INDEX_NAME,
-  getClient,
   asegurarIndice,
   listarCursosSupabase,
   indexarCursos,
