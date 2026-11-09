@@ -140,16 +140,21 @@ async function reindexarSiVacio() {
 async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
   await reindexarSiVacio();
 
-  const consulta = q && q.trim()
+  const queryLimpia = (q || '').trim();
+  const consulta = queryLimpia
     ? {
         bool: {
           should: [
-            { match: { titulo: { query: q, boost: 3 } } },
-            { match: { instructor: { query: q, boost: 2 } } },
-            { match: { categoria: { query: q } } },
-            { match: { descripcion: { query: q } } },
-            { prefix: { titulo: q } }
-          ]
+            // Coincidencia exacta con mayor peso
+            { match_phrase: { titulo: { query: queryLimpia, boost: 6 } } },
+            // Coincidencia fuzzy tolerante a errores tipográficos (ej. "escel" -> "excel")
+            { match: { titulo: { query: queryLimpia, fuzziness: 'AUTO', prefix_length: 0, boost: 4 } } },
+            { match: { instructor: { query: queryLimpia, fuzziness: 'AUTO', prefix_length: 0, boost: 2 } } },
+            { match: { categoria: { query: queryLimpia, fuzziness: 'AUTO', prefix_length: 0, boost: 2 } } },
+            { match: { descripcion: { query: queryLimpia, fuzziness: 'AUTO', prefix_length: 0 } } },
+            { prefix: { titulo: { value: queryLimpia.toLowerCase() } } }
+          ],
+          minimum_should_match: 1
         }
       }
     : { match_all: {} };
