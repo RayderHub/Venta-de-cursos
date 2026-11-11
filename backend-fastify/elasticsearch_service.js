@@ -120,12 +120,20 @@ async function indexarCursos() {
   return { indexado: cursos.length - fallidos, total: cursos.length, fallidos };
 }
 
+// Memoria caché para resultados de búsqueda con TTL de 60 segundos
+// Evita sobrecargar el clúster remoto de Bonsai en peticiones concurrentes idénticas
+const searchCache = new Map();
+const CACHE_TTL_MS = 60 * 1000;
+let indiceYaVerificado = false;
+
 async function reindexarSiVacio() {
+  if (indiceYaVerificado) return { indexado: 0, total: 0 };
   try {
     await asegurarIndice();
     const res = await esFetch(`/${INDEX_NAME}/_count`);
     if (res.ok) {
       const data = await res.json();
+      indiceYaVerificado = true;
       if ((data.count || 0) === 0) {
         return indexarCursos();
       }
@@ -141,6 +149,14 @@ async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
   await reindexarSiVacio();
 
   const queryLimpia = (q || '').trim();
+  const cacheKey = `${queryLimpia.toLowerCase()}:${desde}:${tamaño}`;
+
+  // Comprobar si existe en caché en memoria y sigue vigente
+  const enCache = searchCache.get(cacheKey);
+  if (enCache && (Date.now() - enCache.timestamp < CACHE_TTL_MS)) {
+    return { ...enCache.data, desdeCache: true };
+  }
+
   const consulta = queryLimpia
     ? {
         bool: {
@@ -164,7 +180,7 @@ async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
       method: 'POST',
       body: JSON.stringify({
         from: desde,
-        size: tamaño,
+        size: Math.min(Number(tamaño) || 24, 50),
         query: consulta
       })
     });
@@ -180,8 +196,17 @@ async function buscarCursos({ q, desde = 0, tamaño = 24 }) {
     }));
 
     const total = typeof data.hits?.total === 'object' ? data.hits.total.value : (data.hits?.total ?? hits.length);
+    const resultado = { total, cursos: hits };
 
-    return { total, cursos: hits };
+    // Guardar en caché con expiración
+    searchCache.set(cacheKey, { timestamp: Date.now(), data: resultado });
+    if (searchCache.size > 200) {
+      // Limitar tamaño de caché para proteger memoria en micro-contenedores
+      const primerClave = searchCache.keys().next().value;
+      searchCache.delete(primerClave);
+    }
+
+    return resultado;
   } catch (err) {
     console.warn('Fallo en busqueda Elasticsearch/Bonsai, ejecutando fallback Supabase:', err.message);
     const todos = await listarCursosSupabase();
