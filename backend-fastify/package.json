@@ -5,7 +5,7 @@
   "main": "endpoint_widget_fastify.js",
   "scripts": {
     "start": "node endpoint_widget_fastify.js",
-    "test": "node --check endpoint_widget_fastify.js"
+    "test": "node --check endpoint_widget_fastify.js && node --check elasticsearch_service.js"
   },
   "keywords": [],
   "author": "",
