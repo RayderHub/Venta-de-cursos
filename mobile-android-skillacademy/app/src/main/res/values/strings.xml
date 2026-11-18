@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">SkillAcademy</string>
+    <string name="widget_name">Cursos Pendientes</string>
+    <string name="widget_description">Carrusel transparente con tus cursos en progreso.</string>
 </resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fondo de la barra de progreso -->
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <corners android:radius="4dp" />
+            <solid android:color="#40334155" />
+        </shape>
+    </item>
+    <!-- Progreso activo en color verde azulado / cian -->
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="rectangle">
+                <corners android:radius="4dp" />
+                <solid android:color="#0D9488" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>

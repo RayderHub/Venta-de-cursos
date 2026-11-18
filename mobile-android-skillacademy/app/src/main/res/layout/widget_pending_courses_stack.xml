@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_transparent_bg"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- Encabezado del Widget transparente -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="SkillAcademy • En Curso"
+            android:textColor="#E2E8F0"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_badge_bg"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:text="Desliza ↕"
+            android:textColor="#5EEAD4"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Carrusel tipo StackView (tarjetas deslizables con el dedo en 3D) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <StackView
+            android:id="@+id/widget_stack_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:animateFirstView="true"
+            android:loopViews="true" />
+
+        <!-- Vista vacía cuando no hay cursos pendientes -->
+        <TextView
+            android:id="@+id/widget_empty_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="¡Estás al día!\nNo tienes cursos pendientes."
+            android:textColor="#94A3B8"
+            android:textSize="13sp"
+            android:visibility="gone" />
+    </FrameLayout>
+
+</LinearLayout>

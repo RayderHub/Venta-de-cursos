@@ -24,6 +24,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Widget Transparente de Cursos Pendientes para HomeScreen -->
+        <receiver
+            android:name=".ui.widget.CoursesPendingWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.skillacademy.mobile.ACTION_REFRESH_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_pending_courses_info" />
+        </receiver>
+
+        <!-- Servicio de RemoteViews para el carrusel StackView de cursos -->
+        <service
+            android:name=".ui.widget.CoursesWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
     </application>
 
 </manifest>
