@@ -36,7 +36,6 @@ import com.skillacademy.mobile.data.remote.SupabaseProfile
 import com.skillacademy.mobile.ui.theme.*
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
-import java.io.File
 
 /**
  * Pantalla de Perfil de Usuario — Entregable 2 & Prácticas 5/6
@@ -89,7 +88,7 @@ fun ProfileScreen(
     fun uploadAndSavePhoto(imageBytes: ByteArray) {
         isUploadingPhoto = true
         coroutineScope.launch {
-            // 1. Subir la imagen real a Supabase Storage (bucket avatars/avatars/<id>.jpg)
+            // 1. Subir la imagen exclusivamente a Supabase Storage en la nube (bucket avatars)
             val uploadRes = AuthRepository.uploadAvatar(
                 userId = profile.id,
                 imageBytes = imageBytes,
@@ -97,17 +96,21 @@ fun ProfileScreen(
                 refreshToken = refreshToken,
                 userEmail = profile.email
             )
-            val finalAvatarUrl = if (uploadRes.isSuccess && uploadRes.data != null) {
-                uploadRes.data
-            } else {
-                // Respaldo en almacenamiento interno
-                val file = File(context.filesDir, "avatar_${profile.id}.jpg")
-                file.writeBytes(imageBytes)
-                Uri.fromFile(file).toString()
+
+            if (!uploadRes.isSuccess || uploadRes.data.isNullOrBlank()) {
+                isUploadingPhoto = false
+                Toast.makeText(
+                    context,
+                    "Error al subir imagen a Supabase Storage: ${uploadRes.error ?: "Error de conexión"}",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@launch
             }
 
-            // 2. Guardar la URL pública permanente en la tabla profiles de Supabase
-            AuthRepository.updateProfile(
+            val finalAvatarUrl = uploadRes.data
+
+            // 2. Guardar la URL pública remota de Supabase Storage en la tabla profiles
+            val updateRes = AuthRepository.updateProfile(
                 userId = profile.id,
                 accessToken = accessToken,
                 fullName = fullName,
@@ -118,13 +121,17 @@ fun ProfileScreen(
             )
 
             // 3. Forzar refresco inmediato en Coil agregando timestamp para burlar la caché de imagen vieja
-            val freshDisplayUrl = if (finalAvatarUrl.startsWith("http")) "$finalAvatarUrl?t=${System.currentTimeMillis()}" else finalAvatarUrl
+            val freshDisplayUrl = "$finalAvatarUrl?t=${System.currentTimeMillis()}"
             avatarUrl = freshDisplayUrl
             isUploadingPhoto = false
 
-            val updatedProfile = profile.copy(avatarUrl = finalAvatarUrl)
-            onProfileUpdated(updatedProfile)
-            Toast.makeText(context, "¡Foto de perfil guardada exitosamente en la nube!", Toast.LENGTH_SHORT).show()
+            if (updateRes.isSuccess) {
+                val updatedProfile = profile.copy(avatarUrl = finalAvatarUrl)
+                onProfileUpdated(updatedProfile)
+                Toast.makeText(context, "¡Foto de perfil actualizada exitosamente en Supabase Storage!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Foto subida a Storage, pero falló sincronización en profiles: ${updateRes.error}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
