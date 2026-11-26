@@ -405,6 +405,7 @@ fun MainAppScreen() {
                         ProfileScreen(
                             profile = prof,
                             accessToken = sess.accessToken,
+                            refreshToken = sess.refreshToken,
                             onProfileUpdated = { updated ->
                                 profile = updated
                                 sessionManager.saveProfile(updated)

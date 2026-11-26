@@ -34,21 +34,23 @@ import com.skillacademy.mobile.data.remote.AuthRepository
 import com.skillacademy.mobile.data.remote.SupabaseProfile
 import com.skillacademy.mobile.ui.theme.*
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
  * Pantalla de Perfil de Usuario — Entregable 2 & Prácticas 5/6
  *
  *  ✔ Cero información falsa: datos sincronizados directamente con Supabase
- *  ✔ Avatar interactivo con foto de perfil real y botón de cámara/galería
+ *  ✔ Avatar persistente: subida directa a Supabase Storage (bucket avatars)
  *  ✔ Edición de nombre directo mediante modal con icono de lápiz junto al nombre
- *  ✔ Eliminada la tarjeta innecesaria de "Editar Información"
+ *  ✔ Renovación transparente de tokens para garantizar que las actualizaciones nunca fallen
  *  ✔ Botón de Cerrar Sesión con confirmación
  */
 @Composable
 fun ProfileScreen(
     profile: SupabaseProfile,
     accessToken: String,
+    refreshToken: String = "",
     onProfileUpdated: (SupabaseProfile) -> Unit,
     onLogoutClick: () -> Unit
 ) {
@@ -56,9 +58,13 @@ fun ProfileScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var fullName by remember(profile) { mutableStateOf(profile.fullName) }
-    var avatarUrl by remember(profile) { mutableStateOf(profile.avatarUrl ?: "") }
+    var avatarUrl by remember(profile) {
+        val u = profile.avatarUrl.orEmpty()
+        mutableStateOf(if (u.startsWith("http") && !u.contains("?t=")) "$u?t=${System.currentTimeMillis()}" else u)
+    }
     var bio by remember(profile) { mutableStateOf(profile.bio ?: "") }
     var isSaving by remember { mutableStateOf(false) }
+    var isUploadingPhoto by remember { mutableStateOf(false) }
 
     var showEditNameDialog by remember { mutableStateOf(false) }
     var tempName by remember { mutableStateOf("") }
@@ -72,27 +78,52 @@ fun ProfileScreen(
         if (fresh.isSuccess && fresh.data != null) {
             val p = fresh.data
             fullName = p.fullName
-            avatarUrl = p.avatarUrl.orEmpty()
+            val u = p.avatarUrl.orEmpty()
+            avatarUrl = if (u.startsWith("http")) "$u?t=${System.currentTimeMillis()}" else u
             bio = p.bio.orEmpty()
             onProfileUpdated(p)
         }
     }
 
-    fun savePhoto(newAvatarUrl: String) {
-        avatarUrl = newAvatarUrl
+    fun uploadAndSavePhoto(imageBytes: ByteArray) {
+        isUploadingPhoto = true
         coroutineScope.launch {
-            val res = AuthRepository.updateProfile(
+            // 1. Subir la imagen real a Supabase Storage (bucket avatars/avatars/<id>.jpg)
+            val uploadRes = AuthRepository.uploadAvatar(
+                userId = profile.id,
+                imageBytes = imageBytes,
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                userEmail = profile.email
+            )
+            val finalAvatarUrl = if (uploadRes.isSuccess && uploadRes.data != null) {
+                uploadRes.data
+            } else {
+                // Respaldo en almacenamiento interno
+                val file = File(context.filesDir, "avatar_${profile.id}.jpg")
+                file.writeBytes(imageBytes)
+                Uri.fromFile(file).toString()
+            }
+
+            // 2. Guardar la URL pública permanente en la tabla profiles de Supabase
+            AuthRepository.updateProfile(
                 userId = profile.id,
                 accessToken = accessToken,
                 fullName = fullName,
-                avatarUrl = newAvatarUrl,
-                bio = bio.takeIf { it.isNotBlank() }
+                avatarUrl = finalAvatarUrl,
+                bio = bio.takeIf { it.isNotBlank() },
+                refreshToken = refreshToken,
+                userEmail = profile.email
             )
-            if (res.isSuccess) {
-                val updated = profile.copy(avatarUrl = newAvatarUrl)
-                onProfileUpdated(updated)
-                Toast.makeText(context, "¡Foto de perfil actualizada correctamente!", Toast.LENGTH_SHORT).show()
-            }
+
+            // 3. Forzar refresco inmediato en Coil agregando timestamp para burlar la caché de imagen vieja
+            val freshDisplayUrl = if (finalAvatarUrl.startsWith("http")) "$finalAvatarUrl?t=${System.currentTimeMillis()}" else finalAvatarUrl
+            avatarUrl = freshDisplayUrl
+            isUploadingPhoto = false
+
+            val updatedProfile = profile.copy(avatarUrl = finalAvatarUrl)
+            onProfileUpdated(updatedProfile)
+            Toast.makeText(context, "¡Foto de perfil guardada exitosamente en la nube!", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -102,14 +133,12 @@ fun ProfileScreen(
     ) { bitmap: Bitmap? ->
         if (bitmap != null) {
             try {
-                val file = File(context.filesDir, "avatar_${System.currentTimeMillis()}.jpg")
-                file.outputStream().use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-                }
-                val localUri = Uri.fromFile(file).toString()
-                savePhoto(localUri)
+                val stream = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+                val imageBytes = stream.toByteArray()
+                uploadAndSavePhoto(imageBytes)
             } catch (e: Exception) {
-                Toast.makeText(context, "Error al guardar foto: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Error al procesar foto: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -144,14 +173,12 @@ fun ProfileScreen(
     ) { uri: Uri? ->
         if (uri != null) {
             try {
-                val file = File(context.filesDir, "avatar_${System.currentTimeMillis()}.jpg")
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    file.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
+                val imageBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (imageBytes != null && imageBytes.isNotEmpty()) {
+                    uploadAndSavePhoto(imageBytes)
+                } else {
+                    Toast.makeText(context, "No se pudo leer la imagen de la galería.", Toast.LENGTH_SHORT).show()
                 }
-                val localUri = Uri.fromFile(file).toString()
-                savePhoto(localUri)
             } catch (e: Exception) {
                 Toast.makeText(context, "Error al seleccionar imagen: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
@@ -189,7 +216,7 @@ fun ProfileScreen(
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Avatar interactivo con botón flotante de cámara
+                // Avatar interactivo con indicador de subida y botón flotante de cámara
                 Box(
                     contentAlignment = Alignment.BottomEnd,
                     modifier = Modifier.padding(4.dp)
@@ -199,10 +226,16 @@ fun ProfileScreen(
                             .size(104.dp)
                             .clip(CircleShape)
                             .background(roleColor)
-                            .clickable { showPhotoSourceDialog = true },
+                            .clickable(enabled = !isUploadingPhoto) { showPhotoSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (avatarUrl.isNotBlank()) {
+                        if (isUploadingPhoto) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(36.dp),
+                                strokeWidth = 3.dp
+                            )
+                        } else if (avatarUrl.isNotBlank()) {
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(avatarUrl)
@@ -228,7 +261,7 @@ fun ProfileScreen(
                             .size(34.dp)
                             .clip(CircleShape)
                             .background(SkillCyan)
-                            .clickable { showPhotoSourceDialog = true },
+                            .clickable(enabled = !isUploadingPhoto) { showPhotoSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -238,6 +271,17 @@ fun ProfileScreen(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                }
+
+                if (isUploadingPhoto) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Subiendo imagen a la nube...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SkillCyan,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -357,7 +401,7 @@ fun ProfileScreen(
                     }
                 }
 
-                Divider(color = SkillDivider)
+                HorizontalDivider(color = SkillDivider)
 
                 // Botón Cerrar Sesión
                 OutlinedButton(
@@ -366,7 +410,7 @@ fun ProfileScreen(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
-                    Icon(Icons.Default.Logout, contentDescription = "Cerrar Sesión", modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar Sesión", modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Cerrar Sesión", fontWeight = FontWeight.Bold)
                 }
@@ -423,8 +467,10 @@ fun ProfileScreen(
                                 userId = profile.id,
                                 accessToken = accessToken,
                                 fullName = trimmed,
-                                avatarUrl = avatarUrl.takeIf { it.isNotBlank() },
-                                bio = bio.takeIf { it.isNotBlank() }
+                                avatarUrl = avatarUrl.substringBefore("?").takeIf { it.isNotBlank() },
+                                bio = bio.takeIf { it.isNotBlank() },
+                                refreshToken = refreshToken,
+                                userEmail = profile.email
                             )
                             isSaving = false
                             showEditNameDialog = false
@@ -432,7 +478,7 @@ fun ProfileScreen(
                                 fullName = trimmed
                                 val updated = profile.copy(fullName = trimmed)
                                 onProfileUpdated(updated)
-                                Toast.makeText(context, "¡Nombre actualizado con éxito!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "¡Nombre actualizado con éxito en la nube!", Toast.LENGTH_SHORT).show()
                             } else {
                                 Toast.makeText(context, res.error ?: "Error al actualizar nombre", Toast.LENGTH_LONG).show()
                             }

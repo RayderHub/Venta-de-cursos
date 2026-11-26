@@ -121,4 +121,45 @@ object SupabaseHttp {
     /** DELETE. */
     suspend fun delete(path: String, accessToken: String? = null): SupabaseResult<String> =
         request(path, "DELETE", accessToken = accessToken)
+
+    /** Sube bytes binarios a Supabase Storage (por ejemplo para avatares en /storage/v1/object/avatars/...) */
+    suspend fun uploadBytes(
+        path: String,
+        bytes: ByteArray,
+        contentType: String = "image/jpeg",
+        accessToken: String? = null,
+        extraHeaders: Map<String, String> = emptyMap()
+    ): SupabaseResult<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("${SupabaseConfig.URL}$path")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 15_000
+            conn.readTimeout    = 15_000
+            conn.setRequestProperty("apikey",       SupabaseConfig.ANON)
+            conn.setRequestProperty("Content-Type", contentType)
+            conn.setRequestProperty("x-upsert",     "true")
+            if (accessToken != null) {
+                conn.setRequestProperty("Authorization", "Bearer $accessToken")
+            } else {
+                conn.setRequestProperty("Authorization", "Bearer ${SupabaseConfig.ANON}")
+            }
+            extraHeaders.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+
+            conn.doOutput = true
+            conn.outputStream.use { it.write(bytes) }
+
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val text = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
+
+            if (code in 200..299) {
+                SupabaseResult(data = text)
+            } else {
+                SupabaseResult(error = "HTTP $code: $text")
+            }
+        } catch (e: Exception) {
+            SupabaseResult(error = e.message ?: "Error de conexión")
+        }
+    }
 }
