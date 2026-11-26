@@ -489,7 +489,7 @@ object InscripcionesRepository {
             val result = SupabaseHttp.getArray(
                 "$BASE/lecciones?curso_id=eq.$cursoId&order=orden.asc"
             )
-            if (result.isSuccess && result.data != null && result.data.length() > 0) {
+            if (result.isSuccess && result.data != null) {
                 val list = mutableListOf<com.skillacademy.mobile.data.model.LessonUiModel>()
                 val arr = result.data
                 for (i in 0 until arr.length()) {
@@ -505,14 +505,11 @@ object InscripcionesRepository {
                         )
                     )
                 }
-                if (list.isNotEmpty()) return@withContext list
+                return@withContext list
             }
-            // Respaldo resiliente: buscar lecciones en el catálogo precargado o generar predeterminadas
+            // En modo offline, buscar exclusivamente lecciones precargadas para este cursoId exacto
             val mockCourse = com.skillacademy.mobile.data.mock.MockData.courses.find { it.id == cursoId }
-            if (mockCourse != null && mockCourse.lecciones.isNotEmpty()) {
-                return@withContext mockCourse.lecciones
-            }
-            getDefaultLecciones(cursoId)
+            mockCourse?.lecciones.orEmpty()
         }
 
     private fun getDefaultLecciones(cursoId: Long): List<com.skillacademy.mobile.data.model.LessonUiModel> = listOf(
@@ -679,74 +676,43 @@ object InscripcionesRepository {
         cursoTitulo: String = "",
         accessToken: String? = null
     ): List<TareaUiModel> = withContext(Dispatchers.IO) {
-        var result = SupabaseHttp.getArray(
+        val result = SupabaseHttp.getArray(
             "$BASE/tareas?curso_id=eq.$cursoId&order=id.asc",
             accessToken = accessToken
         )
-        var arr = if (result.isSuccess) result.data else null
+        if (result.isSuccess && result.data != null) {
+            val list = mutableListOf<TareaUiModel>()
+            val arr = result.data
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val id = o.optLong("id", 0)
+                val titulo = o.optString("titulo", "Tarea ${i + 1}")
+                val fecha = o.optString("fecha", "")
+                val prioridad = o.optString("prioridad", "Media")
+                val estado = o.optString("estado", "Pendiente")
+                val ponderacion = o.optInt("porcentaje_aprobacion", o.optInt("ponderacion", 60))
 
-        if ((arr == null || arr.length() == 0) && cursoTitulo.isNotBlank()) {
-            val encodedTitle = URLEncoder.encode(cursoTitulo, "UTF-8").replace("+", "%20")
-            result = SupabaseHttp.getArray(
-                "$BASE/tareas?curso=eq.$encodedTitle&order=id.asc",
-                accessToken = accessToken
-            )
-            if (result.isSuccess && result.data != null && result.data.length() > 0) {
-                arr = result.data
-            }
-        }
-
-        if (arr == null || arr.length() == 0) {
-            val allRes = SupabaseHttp.getArray("$BASE/tareas?order=id.asc", accessToken = accessToken)
-            if (allRes.isSuccess && allRes.data != null) {
-                val allArr = allRes.data
-                val filtered = JSONArray()
-                for (i in 0 until allArr.length()) {
-                    val o = allArr.optJSONObject(i) ?: continue
-                    val cId = o.optLong("curso_id", -1)
-                    val cName = o.optString("curso", "")
-                    if (cId == cursoId || (cursoTitulo.isNotBlank() && cName.equals(cursoTitulo, ignoreCase = true))) {
-                        filtered.put(o)
-                    }
+                var descripcion = o.optString("descripcion", "")
+                if (descripcion.isBlank()) {
+                    val fechaLabel = if (fecha.isNotBlank()) "Fecha límite: $fecha" else "Sin fecha límite"
+                    descripcion = "$fechaLabel • Prioridad: $prioridad • Mínimo de aprobación: $ponderacion%"
                 }
-                if (filtered.length() > 0) arr = filtered
-            }
-        }
 
-        if (arr == null || arr.length() == 0) {
-            // Respaldo de tareas completas para el curso
-            return@withContext getDefaultTareas(cursoId, cursoTitulo)
-        }
-
-        val list = mutableListOf<TareaUiModel>()
-        for (i in 0 until arr.length()) {
-            val o = arr.optJSONObject(i) ?: continue
-            val id = o.optLong("id", 0)
-            val titulo = o.optString("titulo", "Tarea ${i + 1}")
-            val fecha = o.optString("fecha", "")
-            val prioridad = o.optString("prioridad", "Media")
-            val estado = o.optString("estado", "Pendiente")
-            val ponderacion = o.optInt("porcentaje_aprobacion", o.optInt("ponderacion", 60))
-
-            var descripcion = o.optString("descripcion", "")
-            if (descripcion.isBlank()) {
-                val fechaLabel = if (fecha.isNotBlank()) "Fecha límite: $fecha" else "Sin fecha límite"
-                descripcion = "$fechaLabel • Prioridad: $prioridad • Mínimo de aprobación: $ponderacion%"
-            }
-
-            list.add(
-                TareaUiModel(
-                    id            = id,
-                    cursoId       = o.optLong("curso_id", cursoId),
-                    titulo        = titulo,
-                    descripcion   = descripcion,
-                    tipoContenido = o.optString("tipo_contenido", "texto"),
-                    ponderacion   = ponderacion,
-                    estado        = estado
+                list.add(
+                    TareaUiModel(
+                        id            = id,
+                        cursoId       = o.optLong("curso_id", cursoId),
+                        titulo        = titulo,
+                        descripcion   = descripcion,
+                        tipoContenido = o.optString("tipo_contenido", "texto"),
+                        ponderacion   = ponderacion,
+                        estado        = estado
+                    )
                 )
-            )
+            }
+            return@withContext list
         }
-        list
+        emptyList()
     }
 
     private fun getDefaultTareas(cursoId: Long, cursoTitulo: String): List<TareaUiModel> {

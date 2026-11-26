@@ -85,10 +85,18 @@ fun MainAppScreen() {
         }
     }
 
-    // Recargar inscripciones cada vez que haya una sesión activa
+    // Recargar inscripciones y perfil actualizado cada vez que haya una sesión activa
     LaunchedEffect(session) {
-        if (session != null) {
+        val sess = session
+        if (sess != null) {
             reloadEnrolledCourses()
+            coroutineScope.launch {
+                val profRes = com.skillacademy.mobile.data.remote.AuthRepository.loadProfile(sess.userId, sess.accessToken)
+                if (profRes.isSuccess && profRes.data != null) {
+                    profile = profRes.data
+                    sessionManager.saveProfile(profRes.data)
+                }
+            }
         } else {
             enrolledCourses = emptyList()
         }

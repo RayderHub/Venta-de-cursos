@@ -11,8 +11,6 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.skillacademy.mobile.data.remote.AuthRepository
 import com.skillacademy.mobile.data.remote.SupabaseProfile
 import com.skillacademy.mobile.ui.theme.*
@@ -40,10 +39,10 @@ import java.io.File
 /**
  * Pantalla de Perfil de Usuario — Entregable 2 & Prácticas 5/6
  *
- *  ✔ Cero información falsa: requiere sesión real activa
- *  ✔ Desglose completo de datos: nombre, email, rol, biografía y foto
- *  ✔ Edición de Nombre y Foto de Perfil (con selector rápido de avatares)
- *  ✔ Guarda los cambios directamente en Supabase (tabla profiles)
+ *  ✔ Cero información falsa: datos sincronizados directamente con Supabase
+ *  ✔ Avatar interactivo con foto de perfil real y botón de cámara/galería
+ *  ✔ Edición de nombre directo mediante modal con icono de lápiz junto al nombre
+ *  ✔ Eliminada la tarjeta innecesaria de "Editar Información"
  *  ✔ Botón de Cerrar Sesión con confirmación
  */
 @Composable
@@ -60,8 +59,42 @@ fun ProfileScreen(
     var avatarUrl by remember(profile) { mutableStateOf(profile.avatarUrl ?: "") }
     var bio by remember(profile) { mutableStateOf(profile.bio ?: "") }
     var isSaving by remember { mutableStateOf(false) }
+
+    var showEditNameDialog by remember { mutableStateOf(false) }
+    var tempName by remember { mutableStateOf("") }
+
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
+
+    // Sincronizar automáticamente el perfil más reciente desde Supabase al entrar
+    LaunchedEffect(profile.id) {
+        val fresh = AuthRepository.loadProfile(profile.id, accessToken)
+        if (fresh.isSuccess && fresh.data != null) {
+            val p = fresh.data
+            fullName = p.fullName
+            avatarUrl = p.avatarUrl.orEmpty()
+            bio = p.bio.orEmpty()
+            onProfileUpdated(p)
+        }
+    }
+
+    fun savePhoto(newAvatarUrl: String) {
+        avatarUrl = newAvatarUrl
+        coroutineScope.launch {
+            val res = AuthRepository.updateProfile(
+                userId = profile.id,
+                accessToken = accessToken,
+                fullName = fullName,
+                avatarUrl = newAvatarUrl,
+                bio = bio.takeIf { it.isNotBlank() }
+            )
+            if (res.isSuccess) {
+                val updated = profile.copy(avatarUrl = newAvatarUrl)
+                onProfileUpdated(updated)
+                Toast.makeText(context, "¡Foto de perfil actualizada correctamente!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     // Launcher de Cámara nativa del dispositivo
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -73,8 +106,8 @@ fun ProfileScreen(
                 file.outputStream().use { out ->
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
                 }
-                avatarUrl = Uri.fromFile(file).toString()
-                Toast.makeText(context, "¡Foto capturada! Pulsa 'Guardar Cambios' para confirmarla.", Toast.LENGTH_SHORT).show()
+                val localUri = Uri.fromFile(file).toString()
+                savePhoto(localUri)
             } catch (e: Exception) {
                 Toast.makeText(context, "Error al guardar foto: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
@@ -117,8 +150,8 @@ fun ProfileScreen(
                         input.copyTo(output)
                     }
                 }
-                avatarUrl = Uri.fromFile(file).toString()
-                Toast.makeText(context, "¡Foto de galería seleccionada! Pulsa 'Guardar Cambios'.", Toast.LENGTH_SHORT).show()
+                val localUri = Uri.fromFile(file).toString()
+                savePhoto(localUri)
             } catch (e: Exception) {
                 Toast.makeText(context, "Error al seleccionar imagen: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
@@ -134,15 +167,6 @@ fun ProfileScreen(
             .uppercase()
             .ifBlank { profile.email.take(2).uppercase() }
     }
-
-    // Avatares rápidos preconfigurados tipo DiceBear
-    val presetAvatars = listOf(
-        "https://api.dicebear.com/7.x/bottts/png?seed=${profile.id}&backgroundColor=0f172a",
-        "https://api.dicebear.com/7.x/avataaars/png?seed=${profile.email}&backgroundColor=1e293b",
-        "https://api.dicebear.com/7.x/lorelei/png?seed=${profile.fullName.ifBlank { "skill" }}&backgroundColor=0d9488",
-        "https://api.dicebear.com/7.x/notionists/png?seed=${profile.id}&backgroundColor=2563eb",
-        "https://api.dicebear.com/7.x/personas/png?seed=${profile.email}&backgroundColor=8b5cf6"
-    )
 
     Column(
         modifier = Modifier
@@ -165,14 +189,14 @@ fun ProfileScreen(
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Avatar interactivo con botón de cámara
+                // Avatar interactivo con botón flotante de cámara
                 Box(
                     contentAlignment = Alignment.BottomEnd,
                     modifier = Modifier.padding(4.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(96.dp)
+                            .size(104.dp)
                             .clip(CircleShape)
                             .background(roleColor)
                             .clickable { showPhotoSourceDialog = true },
@@ -180,7 +204,10 @@ fun ProfileScreen(
                     ) {
                         if (avatarUrl.isNotBlank()) {
                             AsyncImage(
-                                model = avatarUrl,
+                                model = ImageRequest.Builder(context)
+                                    .data(avatarUrl)
+                                    .crossfade(true)
+                                    .build(),
                                 contentDescription = "Avatar de perfil",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -190,15 +217,15 @@ fun ProfileScreen(
                                 text = iniciales,
                                 color = Color.White,
                                 fontWeight = FontWeight.Black,
-                                fontSize = 32.sp
+                                fontSize = 34.sp
                             )
                         }
                     }
 
-                    // Botón flotante de cámara
+                    // Botón flotante de cámara/galería
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(34.dp)
                             .clip(CircleShape)
                             .background(SkillCyan)
                             .clickable { showPhotoSourceDialog = true },
@@ -213,14 +240,35 @@ fun ProfileScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                Text(
-                    text = fullName.ifBlank { "Usuario SkillAcademy" },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = SkillTextPrimary
-                )
+                // Nombre con botón de edición al lado
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = fullName.ifBlank { "Usuario SkillAcademy" },
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = SkillTextPrimary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    IconButton(
+                        onClick = {
+                            tempName = fullName
+                            showEditNameDialog = true
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar nombre",
+                            tint = SkillCyan,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
 
                 Text(
                     text = profile.email,
@@ -228,7 +276,7 @@ fun ProfileScreen(
                     color = SkillTextMuted
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Badge de Rol
                 Surface(
@@ -236,7 +284,7 @@ fun ProfileScreen(
                     color = roleColor.copy(alpha = 0.15f)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -254,10 +302,20 @@ fun ProfileScreen(
                         )
                     }
                 }
+
+                if (bio.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = bio,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SkillTextMuted,
+                        fontSize = 13.sp
+                    )
+                }
             }
         }
 
-        // ── Formulario de Edición de Perfil ────────────────────────────────────
+        // ── Tarjeta Cuenta y Seguridad ─────────────────────────────────────────
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = SkillSurface),
@@ -267,211 +325,6 @@ fun ProfileScreen(
             Column(
                 modifier = Modifier.padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = SkillCyan,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Editar Información",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = SkillTextPrimary
-                    )
-                }
-
-                Text(
-                    text = "Personaliza tu nombre y tu avatar visible en el catálogo, reseñas y foro.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SkillTextMuted
-                )
-
-                // Nombre completo
-                OutlinedTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = { Text("Nombre Completo") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = SkillCyan) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = SkillCyan,
-                        focusedLabelColor = SkillCyan,
-                        focusedTextColor = SkillTextPrimary,
-                        unfocusedTextColor = SkillTextPrimary
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Botones nativos: Cámara y Galería
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { requestCamera() },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SkillCyan)
-                    ) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Cámara", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-
-                    OutlinedButton(
-                        onClick = { galleryLauncher.launch("image/*") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SkillCyan)
-                    ) {
-                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Galería", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-
-                // URL de Foto / Avatar
-                OutlinedTextField(
-                    value = avatarUrl,
-                    onValueChange = { avatarUrl = it },
-                    label = { Text("URL de Foto de Perfil") },
-                    leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, tint = SkillCyan) },
-                    placeholder = { Text("https://ejemplo.com/foto.jpg") },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = SkillCyan,
-                        focusedLabelColor = SkillCyan,
-                        focusedTextColor = SkillTextPrimary,
-                        unfocusedTextColor = SkillTextPrimary
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Selector de avatares rápidos
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "O elige un avatar temático:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SkillTextMuted,
-                        fontSize = 12.sp
-                    )
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(presetAvatars) { preset ->
-                            Box(
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(CircleShape)
-                                    .background(SkillNavy)
-                                    .clickable { avatarUrl = preset }
-                                    .then(
-                                        if (avatarUrl == preset) {
-                                            Modifier.background(SkillCyan.copy(alpha = 0.3f))
-                                        } else Modifier
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AsyncImage(
-                                    model = preset,
-                                    contentDescription = "Avatar preset",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Biografía (solo si es profesor o disponible para todos)
-                if (profile.roleId == "teacher") {
-                    OutlinedTextField(
-                        value = bio,
-                        onValueChange = { bio = it },
-                        label = { Text("Biografía del Instructor") },
-                        leadingIcon = { Icon(Icons.Default.Info, contentDescription = null, tint = SkillCyan) },
-                        minLines = 3,
-                        maxLines = 5,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SkillCyan,
-                            focusedLabelColor = SkillCyan,
-                            focusedTextColor = SkillTextPrimary,
-                            unfocusedTextColor = SkillTextPrimary
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // Botón Guardar Cambios
-                Button(
-                    onClick = {
-                        if (fullName.isBlank()) {
-                            Toast.makeText(context, "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
-                        isSaving = true
-                        coroutineScope.launch {
-                            val result = AuthRepository.updateProfile(
-                                userId = profile.id,
-                                accessToken = accessToken,
-                                fullName = fullName.trim(),
-                                avatarUrl = avatarUrl.trim().takeIf { it.isNotBlank() },
-                                bio = bio.trim().takeIf { it.isNotBlank() }
-                            )
-                            isSaving = false
-                            if (result.isSuccess) {
-                                val updated = profile.copy(
-                                    fullName = fullName.trim(),
-                                    avatarUrl = avatarUrl.trim().takeIf { it.isNotBlank() },
-                                    bio = bio.trim().takeIf { it.isNotBlank() }
-                                )
-                                onProfileUpdated(updated)
-                                Toast.makeText(context, "¡Perfil actualizado con éxito!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, result.error ?: "Error al guardar perfil", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                    },
-                    enabled = !isSaving,
-                    colors = ButtonDefaults.buttonColors(containerColor = SkillEmerald),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Guardando en Supabase...", color = Color.White, fontWeight = FontWeight.Bold)
-                    } else {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Guardar Cambios", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        // ── Tarjeta Cuenta / Seguridad ─────────────────────────────────────────
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SkillSurface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = "Cuenta y Sesión",
@@ -484,11 +337,23 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = SkillTextMuted, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.Default.Email, contentDescription = null, tint = SkillCyan, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Correo registrado", fontSize = 12.sp, color = SkillTextMuted)
                         Text(profile.email, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = SkillTextPrimary)
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = SkillEmerald, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Estado de cuenta", fontSize = 12.sp, color = SkillTextMuted)
+                        Text(if (profile.isActive) "Activa y verificada" else "Pendiente", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = SkillEmerald)
                     }
                 }
 
@@ -511,6 +376,90 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(24.dp))
     }
 
+    // Modal para Editar Nombre
+    if (showEditNameDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSaving) showEditNameDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Edit, contentDescription = null, tint = SkillCyan)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Editar Nombre", fontWeight = FontWeight.Bold, color = SkillTextPrimary)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Ingresa tu nuevo nombre para mostrar en tu cuenta de SkillAcademy:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SkillTextMuted
+                    )
+                    OutlinedTextField(
+                        value = tempName,
+                        onValueChange = { tempName = it },
+                        label = { Text("Nombre completo") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SkillCyan,
+                            focusedLabelColor = SkillCyan,
+                            focusedTextColor = SkillTextPrimary,
+                            unfocusedTextColor = SkillTextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val trimmed = tempName.trim()
+                        if (trimmed.isBlank()) {
+                            Toast.makeText(context, "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        isSaving = true
+                        coroutineScope.launch {
+                            val res = AuthRepository.updateProfile(
+                                userId = profile.id,
+                                accessToken = accessToken,
+                                fullName = trimmed,
+                                avatarUrl = avatarUrl.takeIf { it.isNotBlank() },
+                                bio = bio.takeIf { it.isNotBlank() }
+                            )
+                            isSaving = false
+                            showEditNameDialog = false
+                            if (res.isSuccess) {
+                                fullName = trimmed
+                                val updated = profile.copy(fullName = trimmed)
+                                onProfileUpdated(updated)
+                                Toast.makeText(context, "¡Nombre actualizado con éxito!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, res.error ?: "Error al actualizar nombre", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
+                    enabled = !isSaving,
+                    colors = ButtonDefaults.buttonColors(containerColor = SkillEmerald)
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Guardar")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showEditNameDialog = false },
+                    enabled = !isSaving
+                ) {
+                    Text("Cancelar", color = SkillTextMuted)
+                }
+            },
+            containerColor = SkillSurface
+        )
+    }
+
     // Modal Selector de Origen de Foto (Cámara / Galería)
     if (showPhotoSourceDialog) {
         AlertDialog(
@@ -528,7 +477,7 @@ fun ProfileScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Selecciona cómo deseas actualizar tu foto de perfil:",
+                        text = "Selecciona una opción para cambiar tu foto de perfil:",
                         style = MaterialTheme.typography.bodyMedium,
                         color = SkillTextMuted
                     )

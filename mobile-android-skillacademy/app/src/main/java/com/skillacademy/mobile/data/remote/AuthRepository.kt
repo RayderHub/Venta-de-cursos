@@ -38,13 +38,44 @@ data class SupabaseProfile(
 
 object AuthRepository {
 
-    // Cuentas locales autorizadas predeterminadas (credenciales.txt) y perfiles en memoria
+    // Cuentas locales autorizadas predeterminadas (credenciales.txt) y perfiles en memoria con UUIDs y Avatars reales de Supabase
     private val localUsers = mutableMapOf(
-        "admin@skillacademy.com" to Triple("Admin12345", "admin", "Administrador SkillAcademy"),
-        "profesor@skillacademy.com" to Triple("Profesor12345", "teacher", "Prof. Laura Gómez"),
-        "user@skillacademy.com" to Triple("User12345", "student", "Estudiante SkillAcademy")
+        "admin@skillacademy.com" to Triple("Admin12345", "admin", "EjemploAdmin"),
+        "profesor@skillacademy.com" to Triple("Profesor12345", "teacher", "Job De la vega"),
+        "user@skillacademy.com" to Triple("User12345", "student", "Userprueba")
     )
     private val localProfiles = mutableMapOf<String, SupabaseProfile>()
+
+    init {
+        // Inicializar perfiles reales de Supabase con sus fotos de perfil de Storage
+        localProfiles["00eae951-3aaa-41e5-9253-73026f6ad913"] = SupabaseProfile(
+            id = "00eae951-3aaa-41e5-9253-73026f6ad913",
+            email = "user@skillacademy.com",
+            fullName = "Userprueba",
+            roleId = "student",
+            isActive = true,
+            avatarUrl = "https://uudjczjsobvqpyvuarhk.supabase.co/storage/v1/object/public/avatars/avatars/00eae951-3aaa-41e5-9253-73026f6ad913.png",
+            bio = null
+        )
+        localProfiles["96f1a0d7-77d9-430c-91b3-0916adcbde58"] = SupabaseProfile(
+            id = "96f1a0d7-77d9-430c-91b3-0916adcbde58",
+            email = "admin@skillacademy.com",
+            fullName = "EjemploAdmin",
+            roleId = "admin",
+            isActive = true,
+            avatarUrl = "https://uudjczjsobvqpyvuarhk.supabase.co/storage/v1/object/public/avatars/avatars/96f1a0d7-77d9-430c-91b3-0916adcbde58.png",
+            bio = "Administrador de la plataforma SkillAcademy"
+        )
+        localProfiles["d24854a0-4043-4461-9ffe-315f9bfc6cee"] = SupabaseProfile(
+            id = "d24854a0-4043-4461-9ffe-315f9bfc6cee",
+            email = "profesor@skillacademy.com",
+            fullName = "Job De la vega",
+            roleId = "teacher",
+            isActive = true,
+            avatarUrl = "https://uudjczjsobvqpyvuarhk.supabase.co/storage/v1/object/public/avatars/avatars/d24854a0-4043-4461-9ffe-315f9bfc6cee.png",
+            bio = "Docente e instructor titular de SkillAcademy."
+        )
+    }
 
     /**
      * Inicia sesión con email + contraseña mediante la API REST de Supabase Auth
@@ -84,8 +115,14 @@ object AuthRepository {
             val registeredUser = localUsers[cleanEmail]
             if (registeredUser != null) {
                 if (registeredUser.first == password) {
-                    val uid = "usr_" + cleanEmail.hashCode().toString().replace("-", "9")
-                    val prof = SupabaseProfile(
+                    val uid = when (cleanEmail) {
+                        "user@skillacademy.com" -> "00eae951-3aaa-41e5-9253-73026f6ad913"
+                        "admin@skillacademy.com" -> "96f1a0d7-77d9-430c-91b3-0916adcbde58"
+                        "profesor@skillacademy.com" -> "d24854a0-4043-4461-9ffe-315f9bfc6cee"
+                        else -> "usr_" + cleanEmail.hashCode().toString().replace("-", "9")
+                    }
+                    val existing = localProfiles[uid]
+                    val prof = existing ?: SupabaseProfile(
                         id = uid,
                         email = cleanEmail,
                         fullName = registeredUser.third,
@@ -217,13 +254,24 @@ object AuthRepository {
 
     /**
      * Carga el perfil desde la tabla `profiles` o desde el almacén de perfiles local.
+     * Intenta consultar con el token y, si falla por permisos o expiración, con la clave anónima pública.
      */
-    suspend fun loadProfile(userId: String, accessToken: String): SupabaseResult<SupabaseProfile> =
+    suspend fun loadProfile(userId: String, accessToken: String = ""): SupabaseResult<SupabaseProfile> =
         withContext(Dispatchers.IO) {
-            val result = SupabaseHttp.getArray(
+            // 1. Intento con accessToken si no es un token simulado
+            val tokenToUse = accessToken.takeIf { it.isNotBlank() && !it.startsWith("session_token_") }
+            var result = SupabaseHttp.getArray(
                 path = "/rest/v1/profiles?id=eq.$userId&select=*&limit=1",
-                accessToken = accessToken
+                accessToken = tokenToUse
             )
+
+            // 2. Si falló, intentar de forma anónima directa
+            if (!result.isSuccess || result.data == null || result.data.length() == 0) {
+                result = SupabaseHttp.getArray(
+                    path = "/rest/v1/profiles?id=eq.$userId&select=*&limit=1"
+                )
+            }
+
             if (result.isSuccess && result.data != null && result.data.length() > 0) {
                 val obj = result.data.getJSONObject(0)
                 val prof = SupabaseProfile(
@@ -232,14 +280,14 @@ object AuthRepository {
                     fullName  = obj.optString("full_name", ""),
                     roleId    = obj.optString("role_id", "student"),
                     isActive  = obj.optBoolean("is_active", true),
-                    avatarUrl = obj.optString("avatar_url").takeIf { it.isNotBlank() },
-                    bio       = obj.optString("bio").takeIf { it.isNotBlank() }
+                    avatarUrl = obj.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" },
+                    bio       = obj.optString("bio").takeIf { it.isNotBlank() && it != "null" }
                 )
                 localProfiles[userId] = prof
                 return@withContext SupabaseResult(data = prof)
             }
 
-            // Respaldo resiliente desde perfiles en memoria
+            // Respaldo resiliente desde perfiles preconfigurados en memoria
             val cachedProfile = localProfiles[userId]
             if (cachedProfile != null) {
                 return@withContext SupabaseResult(data = cachedProfile)
@@ -248,10 +296,11 @@ object AuthRepository {
             val fallbackProfile = SupabaseProfile(
                 id = userId,
                 email = "user@skillacademy.com",
-                fullName = "Estudiante SkillAcademy",
+                fullName = "Userprueba",
                 roleId = "student",
                 isActive = true,
-                avatarUrl = null
+                avatarUrl = "https://uudjczjsobvqpyvuarhk.supabase.co/storage/v1/object/public/avatars/avatars/00eae951-3aaa-41e5-9253-73026f6ad913.png",
+                bio = null
             )
             SupabaseResult(data = fallbackProfile)
         }
@@ -286,10 +335,12 @@ object AuthRepository {
                 put("bio", bio.trim())
             }
         }
+
+        val tokenToUse = accessToken.takeIf { it.isNotBlank() && !it.startsWith("session_token_") }
         val result = SupabaseHttp.patch(
             path = "/rest/v1/profiles?id=eq.$userId",
             body = body,
-            accessToken = accessToken
+            accessToken = tokenToUse
         )
         if (result.isSuccess) {
             SupabaseResult(data = true)

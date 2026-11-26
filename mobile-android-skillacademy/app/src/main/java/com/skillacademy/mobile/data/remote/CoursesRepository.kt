@@ -98,9 +98,7 @@ object CoursesRepository {
                     ?: com.skillacademy.mobile.data.mock.MockData.courses.find { it.id == cursoId }
                     ?: return@coroutineScope null
 
-                val lecciones = leccionesDeferred.await().ifEmpty {
-                    com.skillacademy.mobile.data.mock.MockData.courses.find { it.id == cursoId }?.lecciones.orEmpty()
-                }
+                val lecciones = leccionesDeferred.await()
                 val resenas   = resenasDeferred.await()
                 val instructor = fetchInstructor(cursoBase.instructorId) ?: InstructorUiModel(
                     id = cursoBase.instructorId,
