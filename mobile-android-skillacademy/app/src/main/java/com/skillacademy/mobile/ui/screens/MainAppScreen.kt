@@ -81,6 +81,12 @@ fun MainAppScreen() {
                 refreshToken = sess.refreshToken,
                 sessionManager = sessionManager
             )
+            // Sincronizar la sesión en Compose si el token fue refrescado en segundo plano
+            sessionManager.getSession()?.first?.let { updatedSess ->
+                if (updatedSess.accessToken != session?.accessToken) {
+                    session = updatedSess
+                }
+            }
             isLoadingEnrolled = false
         }
     }

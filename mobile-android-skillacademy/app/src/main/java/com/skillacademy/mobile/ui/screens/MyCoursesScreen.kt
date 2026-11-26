@@ -236,27 +236,18 @@ fun MyCoursesScreen(
                         trackColor = SkillDivider
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Botón para ver información, calificar y acceder al contenido
-                    Button(
-                        onClick = { onCourseClick(curso.id) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = SkillNavy
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().height(42.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "Ver detalles y calificar",
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Ver Información y Calificar",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            text = "Toca para ver detalles y calificar →",
+                            fontSize = 12.sp,
+                            color = SkillEmerald,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

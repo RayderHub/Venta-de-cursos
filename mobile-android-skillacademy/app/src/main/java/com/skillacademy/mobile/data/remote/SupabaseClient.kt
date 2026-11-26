@@ -53,7 +53,7 @@ object SupabaseHttp {
             conn.setRequestProperty("apikey",       SupabaseConfig.ANON)
             conn.setRequestProperty("Content-Type", "application/json")
             conn.setRequestProperty("Prefer",       "return=representation")
-            if (accessToken != null) {
+            if (!accessToken.isNullOrBlank()) {
                 conn.setRequestProperty("Authorization", "Bearer $accessToken")
             } else {
                 conn.setRequestProperty("Authorization", "Bearer ${SupabaseConfig.ANON}")
@@ -144,7 +144,7 @@ object SupabaseHttp {
             conn.setRequestProperty("apikey",       SupabaseConfig.ANON)
             conn.setRequestProperty("Content-Type", contentType)
             conn.setRequestProperty("x-upsert",     "true")
-            if (accessToken != null) {
+            if (!accessToken.isNullOrBlank()) {
                 conn.setRequestProperty("Authorization", "Bearer $accessToken")
             } else {
                 conn.setRequestProperty("Authorization", "Bearer ${SupabaseConfig.ANON}")

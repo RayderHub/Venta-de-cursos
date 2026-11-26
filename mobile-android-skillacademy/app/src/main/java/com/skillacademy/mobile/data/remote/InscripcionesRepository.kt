@@ -747,11 +747,31 @@ object InscripcionesRepository {
     /**
      * Consulta la calificación y reseña previa que el usuario dejó en este curso
      * desde la tabla `curso_reviews` de Supabase (mismo origen que la web).
+     * Si el token expiró, lo renueva automáticamente con el refresh_token.
      */
-    suspend fun fetchUserReview(userId: String, cursoId: Long, accessToken: String? = null): UserCourseReview? = withContext(Dispatchers.IO) {
+    suspend fun fetchUserReview(
+        userId: String,
+        cursoId: Long,
+        accessToken: String? = null,
+        sessionManager: com.skillacademy.mobile.data.local.SessionManager? = null
+    ): UserCourseReview? = withContext(Dispatchers.IO) {
         try {
+            var currentToken = if (!accessToken.isNullOrBlank()) accessToken else sessionManager?.getSession()?.first?.accessToken ?: ""
+            val refreshToken = sessionManager?.getRefreshToken() ?: ""
             val path = "/rest/v1/curso_reviews?usuario_id=eq.$userId&curso_id=eq.$cursoId&select=rating,comment"
-            val res = SupabaseHttp.getArray(path, accessToken)
+
+            var res = SupabaseHttp.getArray(path, if (currentToken.isNotBlank()) currentToken else null)
+
+            // Si retorna 401 / JWT expirado, intentar refrescar sesión
+            if (!res.isSuccess && (res.error?.contains("401") == true || res.error?.contains("JWT") == true) && refreshToken.isNotBlank()) {
+                val refreshResult = AuthRepository.refreshToken(refreshToken)
+                if (refreshResult.isSuccess && refreshResult.data != null) {
+                    currentToken = refreshResult.data.accessToken
+                    sessionManager?.updateAccessToken(currentToken, refreshResult.data.refreshToken)
+                    res = SupabaseHttp.getArray(path, currentToken)
+                }
+            }
+
             if (res.isSuccess && res.data != null && res.data.length() > 0) {
                 val o = res.data.getJSONObject(0)
                 UserCourseReview(
@@ -765,18 +785,23 @@ object InscripcionesRepository {
     }
 
     /**
-     * Califica un curso guardando el rating (1..5) y comentario en `curso_reviews`
-     * y ejecutando el RPC `refresh_course_rating` de Supabase para recalcular los
-     * promedios del curso en tiempo real (mismo mecanismo y tablas que la web).
+     * Califica un curso guardando o actualizando el rating (1..5) y comentario en `curso_reviews`
+     * utilizando upsert con on_conflict=usuario_id,curso_id para no crear duplicados del mismo usuario.
+     * Ejecuta el RPC `refresh_course_rating` de Supabase para recalcular los promedios globales en tiempo real.
+     * Si el token de sesión expiró (401), se renueva automáticamente con el refresh_token de forma transparente.
      */
     suspend fun calificarCurso(
         userId: String,
         cursoId: Long,
         rating: Int,
         comment: String,
-        accessToken: String? = null
+        accessToken: String? = null,
+        sessionManager: com.skillacademy.mobile.data.local.SessionManager? = null
     ): SupabaseResult<Boolean> = withContext(Dispatchers.IO) {
         try {
+            var currentToken = if (!accessToken.isNullOrBlank()) accessToken else sessionManager?.getSession()?.first?.accessToken ?: ""
+            val refreshToken = sessionManager?.getRefreshToken() ?: ""
+
             val bounded = rating.coerceIn(1, 5)
             val body = JSONObject().apply {
                 put("usuario_id", userId)
@@ -791,7 +816,21 @@ object InscripcionesRepository {
             val headers = mapOf(
                 "Prefer" to "resolution=merge-duplicates,return=representation"
             )
-            val upsertRes = SupabaseHttp.post("/rest/v1/curso_reviews", body, accessToken, headers)
+
+            // PostgREST upsert explícito con on_conflict para actualizar en lugar de duplicar o dar error de clave única
+            val upsertPath = "/rest/v1/curso_reviews?on_conflict=usuario_id,curso_id"
+            var upsertRes = SupabaseHttp.post(upsertPath, body, if (currentToken.isNotBlank()) currentToken else null, headers)
+
+            // Si retorna 401 (JWT expirado o no autorizado), renovar token y reintentar
+            if (!upsertRes.isSuccess && (upsertRes.error?.contains("401") == true || upsertRes.error?.contains("JWT") == true) && refreshToken.isNotBlank()) {
+                val refreshResult = AuthRepository.refreshToken(refreshToken)
+                if (refreshResult.isSuccess && refreshResult.data != null) {
+                    currentToken = refreshResult.data.accessToken
+                    sessionManager?.updateAccessToken(currentToken, refreshResult.data.refreshToken)
+                    upsertRes = SupabaseHttp.post(upsertPath, body, currentToken, headers)
+                }
+            }
+
             if (!upsertRes.isSuccess) {
                 return@withContext SupabaseResult(error = upsertRes.error ?: "Error al guardar calificación")
             }
@@ -800,7 +839,7 @@ object InscripcionesRepository {
             val rpcBody = JSONObject().apply {
                 put("target_curso_id", cursoId)
             }
-            SupabaseHttp.post("/rest/v1/rpc/refresh_course_rating", rpcBody, accessToken)
+            SupabaseHttp.post("/rest/v1/rpc/refresh_course_rating", rpcBody, if (currentToken.isNotBlank()) currentToken else null)
 
             SupabaseResult(data = true)
         } catch (e: Exception) {

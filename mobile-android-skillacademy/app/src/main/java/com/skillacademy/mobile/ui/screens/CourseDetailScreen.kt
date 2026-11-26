@@ -76,6 +76,11 @@ fun CourseDetailScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("DESCRIPCIÓN", "LECCIONES", "REQUISITOS")
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sessionManager = remember { com.skillacademy.mobile.data.local.SessionManager(context) }
+    val effectiveUserId = remember(userId) { userId ?: sessionManager.getSession()?.first?.userId }
+    val effectiveAccessToken = remember(accessToken) { accessToken ?: sessionManager.getSession()?.first?.accessToken }
+
     // Estado del sistema de calificación del usuario
     var userRating by remember { mutableIntStateOf(5) }
     var userComment by remember { mutableStateOf("") }
@@ -86,10 +91,15 @@ fun CourseDetailScreen(
     val coroutineScope = rememberCoroutineScope()
 
     // Cargar reseña previa del alumno si ya está inscrito
-    LaunchedEffect(curso.id, userId) {
-        if (isAlreadyEnrolled && !userId.isNullOrBlank()) {
+    LaunchedEffect(curso.id, effectiveUserId) {
+        if (isAlreadyEnrolled && !effectiveUserId.isNullOrBlank()) {
             try {
-                val review = InscripcionesRepository.fetchUserReview(userId, curso.id, accessToken)
+                val review = InscripcionesRepository.fetchUserReview(
+                    userId = effectiveUserId,
+                    cursoId = curso.id,
+                    accessToken = effectiveAccessToken,
+                    sessionManager = sessionManager
+                )
                 if (review != null) {
                     userRating = review.rating
                     userComment = review.comment
@@ -471,22 +481,24 @@ fun CourseDetailScreen(
                                 // Botón para guardar o actualizar la reseña
                                 Button(
                                     onClick = {
-                                        if (userId.isNullOrBlank()) return@Button
+                                        val uid = effectiveUserId
+                                        if (uid.isNullOrBlank()) return@Button
                                         coroutineScope.launch {
                                             isSubmittingRating = true
                                             ratingFeedbackMsg = null
                                             val res = InscripcionesRepository.calificarCurso(
-                                                userId = userId,
+                                                userId = uid,
                                                 cursoId = curso.id,
                                                 rating = userRating,
                                                 comment = userComment.trim(),
-                                                accessToken = accessToken
+                                                accessToken = effectiveAccessToken,
+                                                sessionManager = sessionManager
                                             )
                                             isSubmittingRating = false
                                             if (res.isSuccess) {
                                                 hasExistingReview = true
                                                 isRatingSuccess = true
-                                                ratingFeedbackMsg = "¡Calificación guardada y promedios actualizados!"
+                                                ratingFeedbackMsg = "¡Calificación guardada y actualizada!"
                                                 onRatingSubmitted()
                                             } else {
                                                 isRatingSuccess = false
@@ -496,7 +508,7 @@ fun CourseDetailScreen(
                                     },
                                     modifier = Modifier.fillMaxWidth().height(42.dp),
                                     shape = RoundedCornerShape(10.dp),
-                                    enabled = !isSubmittingRating && !userId.isNullOrBlank(),
+                                    enabled = !isSubmittingRating && !effectiveUserId.isNullOrBlank(),
                                     colors = ButtonDefaults.buttonColors(containerColor = SkillEmerald)
                                 ) {
                                     if (isSubmittingRating) {
