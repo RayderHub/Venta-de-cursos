@@ -12,6 +12,11 @@
   </nav>
 
   <div class="header-actions">
+    <button class="apk-download-chip" type="button" (click)="openDownloadModal()" title="Descargar APK para Android">
+      <span class="apk-icon">&#128241;</span>
+      <span class="apk-text">App</span>
+    </button>
+
     <a class="cart-link" routerLink="/carrito" aria-label="Carrito">
       <span>&#128722;</span>
       @if (carrito.items().length > 0) {
@@ -36,3 +41,43 @@
     }
   </div>
 </header>
+
+<!-- Modal de confirmacion para descargar el APK de la app movil -->
+@if (showDownloadModal()) {
+  <div class="modal-backdrop" (click)="closeDownloadModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="apk-modal-title">
+      <div class="modal-header">
+        <span class="modal-badge">&#128241; App Android</span>
+        <button type="button" class="modal-close-btn" (click)="closeDownloadModal()" aria-label="Cerrar modal">&times;</button>
+      </div>
+
+      <h3 id="apk-modal-title" class="modal-title">&#191;Deseas descargar el APK de SkillAcademy?</h3>
+
+      <p class="modal-description">
+        Descarga directamente el archivo instalador (.apk) oficial para tu tel&#233;fono o tableta Android. Podr&#225;s acceder a tus cursos, consultar lecciones y usar el nuevo widget interactivo.
+      </p>
+
+      <div class="modal-file-info">
+        <div class="file-info-item">
+          <span class="info-label">Archivo:</span>
+          <span class="info-val">SkillAcademy.apk</span>
+        </div>
+        <div class="file-info-item">
+          <span class="info-label">Tama&#241;o:</span>
+          <span class="info-val">12.6 MB</span>
+        </div>
+        <div class="file-info-item">
+          <span class="info-label">Compatibilidad:</span>
+          <span class="info-val">Android 8.0+</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-cancel-btn" (click)="closeDownloadModal()">Cancelar</button>
+        <a href="/downloads/SkillAcademy.apk" download="SkillAcademy.apk" class="modal-confirm-btn" (click)="closeDownloadModal()">
+          <span>&#11015;</span> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+}

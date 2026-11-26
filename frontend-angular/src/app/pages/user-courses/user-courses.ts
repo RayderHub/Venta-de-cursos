@@ -27,6 +27,7 @@ export class UserCourses {
   readonly enrolled = signal<{ curso: Course; progreso: number }[]>([]);
   readonly tareas = signal<TareaDb[]>([]);
   readonly cargando = signal(true);
+  readonly showApkModal = signal(false);
   readonly profileMenuOpen = signal(false);
   readonly ratingMessage = signal('');
   readonly modalReembolso = signal(false);

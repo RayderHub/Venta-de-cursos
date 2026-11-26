@@ -608,3 +608,28 @@
 .modal-btn-cancel { border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #475569; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .modal-btn-save { border: 0; border-radius: 6px; background: #21a366; color: #fff; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; }
 .modal-btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
+
+.apk-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(45, 212, 191, 0.45);
+  border-radius: 8px;
+  background: rgba(13, 148, 136, 0.12);
+  color: #0f766e;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 12px;
+  transition: all 0.2s ease;
+}
+
+.apk-download-btn:hover {
+  background: rgba(13, 148, 136, 0.25);
+  border-color: #0d9488;
+  color: #0d9488;
+  transform: translateY(-1px);
+}

@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CarritoService } from '../../../core/services/carrito.service';
@@ -13,6 +13,16 @@ export class PublicHeader {
   readonly auth = inject(AuthService);
   readonly carrito = inject(CarritoService);
   private router = inject(Router);
+
+  readonly showDownloadModal = signal(false);
+
+  openDownloadModal() {
+    this.showDownloadModal.set(true);
+  }
+
+  closeDownloadModal() {
+    this.showDownloadModal.set(false);
+  }
 
   readonly spaceLink = computed(() => {
     return this.auth.getHomeRouteForRole();

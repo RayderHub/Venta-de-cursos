@@ -11,6 +11,10 @@
 
   <section class="student-main">
     <header class="student-topbar">
+      <button class="apk-download-btn" type="button" (click)="showApkModal.set(true)" title="Descargar APK para Android">
+        <span>&#128241;</span>
+        <span>App</span>
+      </button>
       <div class="profile-menu">
         <button class="profile-button" type="button" (click)="profileMenuOpen.set(!profileMenuOpen())" aria-label="Opciones de perfil">
           @if (avatarUrl()) {
@@ -216,6 +220,33 @@
         <button type="button" class="modal-btn-save" (click)="submitRating()" [disabled]="ratingStars() === 0">
           Enviar calificacion
         </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showApkModal()) {
+  <div class="modal-backdrop" (click)="showApkModal.set(false)">
+    <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3>&#128241; Descargar App Android</h3>
+        <button type="button" class="close-btn" (click)="showApkModal.set(false)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: #cbd5e1; margin-bottom: 12px; font-size: 14px; line-height: 1.5;">
+          &#191;Deseas descargar el instalador oficial (.apk) de SkillAcademy para tu tel&#233;fono o tableta Android?
+        </p>
+        <div style="background: #0b1320; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #94a3b8; display: flex; flex-direction: column; gap: 4px;">
+          <div><strong style="color: #e2e8f0;">Archivo:</strong> SkillAcademy.apk</div>
+          <div><strong style="color: #e2e8f0;">Tama&#241;o:</strong> 12.6 MB</div>
+          <div><strong style="color: #e2e8f0;">Compatibilidad:</strong> Android 8.0 o superior</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn-cancel" (click)="showApkModal.set(false)">Cancelar</button>
+        <a href="/downloads/SkillAcademy.apk" download="SkillAcademy.apk" class="modal-btn-save" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" (click)="showApkModal.set(false)">
+          <span>&#11015;</span> Descargar APK
+        </a>
       </div>
     </div>
   </div>
