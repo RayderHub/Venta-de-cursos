@@ -17,7 +17,7 @@ import org.json.JSONObject
  * Almacena el token JWT de Supabase, refresh_token, ID de usuario, perfil y caché local de cursos inscritos.
  * Cumple con ISO 27001 A.8.24 cifrando los datos en reposo con AES-256 (EncryptedSharedPreferences + Keystore).
  */
-class SessionManager(context: Context) {
+class SessionManager(private val context: Context) {
 
     private val prefs: SharedPreferences = try {
         val masterKey = MasterKey.Builder(context)
@@ -163,6 +163,9 @@ class SessionManager(context: Context) {
                 array.put(obj)
             }
             prefs.edit().putString(KEY_CACHED_COURSES, array.toString()).apply()
+            try {
+                com.skillacademy.mobile.ui.widget.CoursesPendingWidgetProvider.refreshAllWidgets(context)
+            } catch (_: Exception) {}
         } catch (_: Exception) {}
     }
 

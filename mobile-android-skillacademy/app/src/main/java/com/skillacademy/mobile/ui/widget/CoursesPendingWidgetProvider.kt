@@ -46,6 +46,17 @@ class CoursesPendingWidgetProvider : AppWidgetProvider() {
         const val ACTION_REFRESH_WIDGET = "com.skillacademy.mobile.ACTION_REFRESH_WIDGET"
         const val EXTRA_COURSE_ID = "com.skillacademy.mobile.EXTRA_COURSE_ID"
 
+        fun refreshAllWidgets(context: Context) {
+            try {
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val componentName = ComponentName(context, CoursesPendingWidgetProvider::class.java)
+                val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+                if (appWidgetIds.isNotEmpty()) {
+                    appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_stack_view)
+                }
+            } catch (_: Exception) {}
+        }
+
         fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,

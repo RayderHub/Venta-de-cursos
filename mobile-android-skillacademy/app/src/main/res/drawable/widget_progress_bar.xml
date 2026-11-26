@@ -3,16 +3,16 @@
     <!-- Fondo de la barra de progreso -->
     <item android:id="@android:id/background">
         <shape android:shape="rectangle">
-            <corners android:radius="4dp" />
-            <solid android:color="#40334155" />
+            <corners android:radius="3dp" />
+            <solid android:color="#334155" />
         </shape>
     </item>
-    <!-- Progreso activo en color verde azulado / cian -->
+    <!-- Progreso activo en color verde azulado brillante -->
     <item android:id="@android:id/progress">
         <clip>
             <shape android:shape="rectangle">
-                <corners android:radius="4dp" />
-                <solid android:color="#0D9488" />
+                <corners android:radius="3dp" />
+                <solid android:color="#2DD4BF" />
             </shape>
         </clip>
     </item>

@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_card_bg"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="10dp">
 
     <!-- Fila superior: Categoría y Nivel -->
     <LinearLayout
@@ -23,17 +23,17 @@
             android:paddingVertical="2dp"
             android:text="Excel"
             android:textColor="#2DD4BF"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_item_level"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="6dp"
             android:text="Avanzado"
             android:textColor="#94A3B8"
-            android:textSize="10sp" />
+            android:textSize="9sp" />
     </LinearLayout>
 
     <!-- Título del Curso -->
@@ -41,12 +41,12 @@
         android:id="@+id/widget_item_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="4dp"
         android:ellipsize="end"
-        android:maxLines="2"
+        android:maxLines="1"
         android:text="Excel Avanzado: Fórmulas y Dashboards"
         android:textColor="#F8FAFC"
-        android:textSize="13sp"
+        android:textSize="12sp"
         android:textStyle="bold" />
 
     <!-- Instructor -->
@@ -54,20 +54,20 @@
         android:id="@+id/widget_item_instructor"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="1dp"
         android:ellipsize="end"
         android:maxLines="1"
         android:text="Prof. Laura Gómez"
-        android:textColor="#CBD5E1"
-        android:textSize="11sp" />
+        android:textColor="#94A3B8"
+        android:textSize="10sp" />
 
-    <!-- Barra de progreso -->
+    <!-- Barra de progreso compacta -->
     <ProgressBar
         android:id="@+id/widget_item_progress_bar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="6dp"
-        android:layout_marginTop="8dp"
+        android:layout_height="4dp"
+        android:layout_marginTop="5dp"
         android:max="100"
         android:progress="65"
         android:progressDrawable="@drawable/widget_progress_bar" />
@@ -76,7 +76,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="4dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -87,7 +87,7 @@
             android:layout_weight="1"
             android:text="65% completado"
             android:textColor="#38BDF8"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -95,7 +95,7 @@
             android:layout_height="wrap_content"
             android:text="▶ Continuar"
             android:textColor="#5EEAD4"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 

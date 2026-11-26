@@ -5,6 +5,7 @@ import android.content.Intent
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.skillacademy.mobile.R
+import com.skillacademy.mobile.data.local.SessionManager
 
 /**
  * CoursesWidgetService.kt
@@ -42,47 +43,71 @@ class CoursesRemoteViewsFactory(private val context: Context) : RemoteViewsServi
     private fun loadPendingCourses() {
         pendingCourses.clear()
 
-        // Cursos activos con progreso pendiente para el carrusel
-        pendingCourses.add(
-            WidgetCourseItem(
-                id = 1,
-                titulo = "Excel Avanzado: Fórmulas y Dashboards",
-                categoria = "Excel",
-                nivel = "Avanzado",
-                instructor = "Prof. Laura Gómez",
-                progreso = 65
+        // 1. Intentar cargar cursos reales inscritos por el usuario desde SessionManager
+        try {
+            val sessionManager = SessionManager(context)
+            val cached = sessionManager.getCachedCourses()
+            if (cached.isNotEmpty()) {
+                val incomplete = cached.filter { it.progreso < 100 }
+                val targetList = if (incomplete.isNotEmpty()) incomplete else cached
+                for (enrolled in targetList) {
+                    pendingCourses.add(
+                        WidgetCourseItem(
+                            id = enrolled.curso.id,
+                            titulo = enrolled.curso.titulo,
+                            categoria = enrolled.curso.categoria,
+                            nivel = enrolled.curso.nivel,
+                            instructor = enrolled.curso.instructor,
+                            progreso = enrolled.progreso
+                        )
+                    )
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 2. Si no hay cursos inscritos aún, mostrar cursos activos de muestra
+        if (pendingCourses.isEmpty()) {
+            pendingCourses.add(
+                WidgetCourseItem(
+                    id = 1,
+                    titulo = "Excel Avanzado: Fórmulas y Dashboards",
+                    categoria = "Excel",
+                    nivel = "Avanzado",
+                    instructor = "Prof. Laura Gómez",
+                    progreso = 65
+                )
             )
-        )
-        pendingCourses.add(
-            WidgetCourseItem(
-                id = 2,
-                titulo = "Desarrollo Frontend Práctico",
-                categoria = "Programación",
-                nivel = "Intermedio",
-                instructor = "Ing. Carlos Ruiz",
-                progreso = 40
+            pendingCourses.add(
+                WidgetCourseItem(
+                    id = 2,
+                    titulo = "Desarrollo Frontend Práctico",
+                    categoria = "Programación",
+                    nivel = "Intermedio",
+                    instructor = "Ing. Carlos Ruiz",
+                    progreso = 40
+                )
             )
-        )
-        pendingCourses.add(
-            WidgetCourseItem(
-                id = 3,
-                titulo = "Diseño UI para Productos Digitales",
-                categoria = "Diseño",
-                nivel = "Inicial",
-                instructor = "Lic. Ana Morales",
-                progreso = 20
+            pendingCourses.add(
+                WidgetCourseItem(
+                    id = 3,
+                    titulo = "Diseño UI para Productos Digitales",
+                    categoria = "Diseño",
+                    nivel = "Inicial",
+                    instructor = "Lic. Ana Morales",
+                    progreso = 20
+                )
             )
-        )
-        pendingCourses.add(
-            WidgetCourseItem(
-                id = 4,
-                titulo = "Automatización de Reportes en Excel",
-                categoria = "Excel",
-                nivel = "Intermedio",
-                instructor = "Prof. Laura Gómez",
-                progreso = 10
+            pendingCourses.add(
+                WidgetCourseItem(
+                    id = 4,
+                    titulo = "Automatización de Reportes en Excel",
+                    categoria = "Excel",
+                    nivel = "Intermedio",
+                    instructor = "Prof. Laura Gómez",
+                    progreso = 10
+                )
             )
-        )
+        }
     }
 
     override fun onDestroy() {
