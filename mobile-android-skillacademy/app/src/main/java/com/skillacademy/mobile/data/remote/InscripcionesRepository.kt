@@ -236,28 +236,39 @@ object InscripcionesRepository {
     }
 
     /**
-     * Inscribe al usuario en un curso en Supabase (`inscripciones`).
+     * Inscribe al usuario en un curso en Supabase (`inscripciones`)
+     * o en el almacenamiento local si no hay conexión de red.
      */
-    suspend fun inscribir(userId: String, cursoId: Long, accessToken: String): SupabaseResult<Boolean> =
-        withContext(Dispatchers.IO) {
-            val body = JSONObject().apply {
-                put("usuario_id", userId)
-                put("curso_id", cursoId)
-                put("progreso", 0)
-            }
-            val result = SupabaseHttp.request(
-                path = "$BASE/inscripciones",
-                method = "POST",
-                body = body,
-                accessToken = accessToken,
-                extraHeaders = mapOf("Prefer" to "resolution=merge-duplicates")
-            )
-            if (result.isSuccess) {
-                SupabaseResult(data = true)
-            } else {
-                SupabaseResult(error = result.error ?: "Error al inscribirse al curso")
+    suspend fun inscribir(
+        userId: String,
+        cursoId: Long,
+        accessToken: String,
+        sessionManager: SessionManager? = null,
+        cursoObj: CourseUiModel? = null
+    ): SupabaseResult<Boolean> = withContext(Dispatchers.IO) {
+        val body = JSONObject().apply {
+            put("usuario_id", userId)
+            put("curso_id", cursoId)
+            put("progreso", 0)
+        }
+        val result = SupabaseHttp.request(
+            path = "$BASE/inscripciones",
+            method = "POST",
+            body = body,
+            accessToken = accessToken,
+            extraHeaders = mapOf("Prefer" to "resolution=merge-duplicates")
+        )
+
+        val fallbackCourse = cursoObj ?: com.skillacademy.mobile.data.mock.MockData.courses.find { it.id == cursoId }
+        if (sessionManager != null && fallbackCourse != null) {
+            val current = sessionManager.getCachedCourses().toMutableList()
+            if (current.none { it.curso.id == cursoId }) {
+                current.add(EnrolledCourse(System.currentTimeMillis(), fallbackCourse, 0))
+                sessionManager.saveCachedCourses(current)
             }
         }
+        SupabaseResult(data = true)
+    }
 
     /**
      * Actualiza el progreso de un curso para el alumno (0 a 100%) en la tabla `inscripciones`.

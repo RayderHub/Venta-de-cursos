@@ -302,7 +302,13 @@ fun MainAppScreen() {
                             } else {
                                 val sess = session!!
                                 coroutineScope.launch {
-                                    val res = InscripcionesRepository.inscribir(sess.userId, curso.id, sess.accessToken)
+                                    val res = InscripcionesRepository.inscribir(
+                                        userId = sess.userId,
+                                        cursoId = curso.id,
+                                        accessToken = sess.accessToken,
+                                        sessionManager = sessionManager,
+                                        cursoObj = curso
+                                    )
                                     if (res.isSuccess) {
                                         reloadEnrolledCourses()
                                         Toast.makeText(context, "¡Inscripción exitosa a ${curso.titulo}!", Toast.LENGTH_SHORT).show()
@@ -427,9 +433,15 @@ fun MainAppScreen() {
                 lastPaymentMethod = method
                 lastPaidAmount = financialSummary.total
                 coroutineScope.launch {
-                    // 1. Inscribir cada curso en la tabla inscripciones de Supabase
+                    // 1. Inscribir cada curso en la cuenta del estudiante
                     cartItems.forEach { item ->
-                        InscripcionesRepository.inscribir(sess.userId, item.id, sess.accessToken)
+                        InscripcionesRepository.inscribir(
+                            userId = sess.userId,
+                            cursoId = item.id,
+                            accessToken = sess.accessToken,
+                            sessionManager = sessionManager,
+                            cursoObj = item
+                        )
                     }
                     // 2. Refrescar cursos de la cuenta
                     reloadEnrolledCourses()
