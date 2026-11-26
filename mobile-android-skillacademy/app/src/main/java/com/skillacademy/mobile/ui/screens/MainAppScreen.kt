@@ -91,7 +91,7 @@ fun MainAppScreen() {
         if (sess != null) {
             reloadEnrolledCourses()
             coroutineScope.launch {
-                val profRes = com.skillacademy.mobile.data.remote.AuthRepository.loadProfile(sess.userId, sess.accessToken)
+                val profRes = com.skillacademy.mobile.data.remote.AuthRepository.loadProfile(sess.userId, sess.accessToken, sess.email)
                 if (profRes.isSuccess && profRes.data != null) {
                     profile = profRes.data
                     sessionManager.saveProfile(profRes.data)

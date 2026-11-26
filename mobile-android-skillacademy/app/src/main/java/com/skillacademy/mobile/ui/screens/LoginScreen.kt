@@ -585,7 +585,7 @@ fun LoginScreen(
                                 val session = authResult.data!!
                                 Log.i("AccesoSeguro", "Autenticación exitosa. Credenciales verificadas sin fugas en logs.")
 
-                                val profileResult = AuthRepository.loadProfile(session.userId, session.accessToken)
+                                val profileResult = AuthRepository.loadProfile(session.userId, session.accessToken, session.email)
                                 val profile = profileResult.data ?: SupabaseProfile(
                                     id = session.userId,
                                     email = session.email,
@@ -615,7 +615,7 @@ fun LoginScreen(
                                 }
                                 val session = regResult.data!!
 
-                                val profileResult = AuthRepository.loadProfile(session.userId, session.accessToken)
+                                val profileResult = AuthRepository.loadProfile(session.userId, session.accessToken, session.email)
                                 val profile = profileResult.data ?: SupabaseProfile(
                                     id = session.userId,
                                     email = session.email,

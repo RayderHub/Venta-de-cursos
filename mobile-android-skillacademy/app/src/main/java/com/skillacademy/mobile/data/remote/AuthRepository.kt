@@ -254,56 +254,65 @@ object AuthRepository {
 
     /**
      * Carga el perfil desde la tabla `profiles` o desde el almacén de perfiles local.
-     * Intenta consultar con el token y, si falla por permisos o expiración, con la clave anónima pública.
+     * Consulta por ID y si no existe (o si el ID es temporal/local), consulta por email en Supabase.
      */
-    suspend fun loadProfile(userId: String, accessToken: String = ""): SupabaseResult<SupabaseProfile> =
-        withContext(Dispatchers.IO) {
-            // 1. Intento con accessToken si no es un token simulado
-            val tokenToUse = accessToken.takeIf { it.isNotBlank() && !it.startsWith("session_token_") }
-            var result = SupabaseHttp.getArray(
-                path = "/rest/v1/profiles?id=eq.$userId&select=*&limit=1",
-                accessToken = tokenToUse
+    suspend fun loadProfile(
+        userId: String,
+        accessToken: String = "",
+        userEmail: String = ""
+    ): SupabaseResult<SupabaseProfile> = withContext(Dispatchers.IO) {
+        val cleanEmail = userEmail.trim().lowercase()
+        val tokenToUse = accessToken.takeIf { it.isNotBlank() && !it.startsWith("session_token_") }
+
+        // 1. Intento por ID con token
+        var result = SupabaseHttp.getArray(
+            path = "/rest/v1/profiles?id=eq.$userId&select=*&limit=1",
+            accessToken = tokenToUse
+        )
+
+        // 2. Si falló por token o vino vacío, intentar anónimo por ID
+        if (!result.isSuccess || result.data == null || result.data.length() == 0) {
+            result = SupabaseHttp.getArray(
+                path = "/rest/v1/profiles?id=eq.$userId&select=*&limit=1"
             )
-
-            // 2. Si falló, intentar de forma anónima directa
-            if (!result.isSuccess || result.data == null || result.data.length() == 0) {
-                result = SupabaseHttp.getArray(
-                    path = "/rest/v1/profiles?id=eq.$userId&select=*&limit=1"
-                )
-            }
-
-            if (result.isSuccess && result.data != null && result.data.length() > 0) {
-                val obj = result.data.getJSONObject(0)
-                val prof = SupabaseProfile(
-                    id        = obj.optString("id", userId),
-                    email     = obj.optString("email", ""),
-                    fullName  = obj.optString("full_name", ""),
-                    roleId    = obj.optString("role_id", "student"),
-                    isActive  = obj.optBoolean("is_active", true),
-                    avatarUrl = obj.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" },
-                    bio       = obj.optString("bio").takeIf { it.isNotBlank() && it != "null" }
-                )
-                localProfiles[userId] = prof
-                return@withContext SupabaseResult(data = prof)
-            }
-
-            // Respaldo resiliente desde perfiles preconfigurados en memoria
-            val cachedProfile = localProfiles[userId]
-            if (cachedProfile != null) {
-                return@withContext SupabaseResult(data = cachedProfile)
-            }
-
-            val fallbackProfile = SupabaseProfile(
-                id = userId,
-                email = "user@skillacademy.com",
-                fullName = "Userprueba",
-                roleId = "student",
-                isActive = true,
-                avatarUrl = "https://uudjczjsobvqpyvuarhk.supabase.co/storage/v1/object/public/avatars/avatars/00eae951-3aaa-41e5-9253-73026f6ad913.png",
-                bio = null
-            )
-            SupabaseResult(data = fallbackProfile)
         }
+
+        // 3. Si sigue vacío y tenemos email, consultar por email (vital si userId es local o migrado)
+        if ((!result.isSuccess || result.data == null || result.data.length() == 0) && cleanEmail.isNotBlank()) {
+            val encodedEmail = java.net.URLEncoder.encode(cleanEmail, "UTF-8")
+            result = SupabaseHttp.getArray(
+                path = "/rest/v1/profiles?email=eq.$encodedEmail&select=*&limit=1"
+            )
+        }
+
+        if (result.isSuccess && result.data != null && result.data.length() > 0) {
+            val obj = result.data.getJSONObject(0)
+            val realId = obj.optString("id", userId)
+            val prof = SupabaseProfile(
+                id        = realId,
+                email     = obj.optString("email", cleanEmail),
+                fullName  = obj.optString("full_name", ""),
+                roleId    = obj.optString("role_id", "student"),
+                isActive  = obj.optBoolean("is_active", true),
+                avatarUrl = obj.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" },
+                bio       = obj.optString("bio").takeIf { it.isNotBlank() && it != "null" }
+            )
+            localProfiles[userId] = prof
+            localProfiles[realId] = prof
+            return@withContext SupabaseResult(data = prof)
+        }
+
+        // 4. Respaldo resiliente desde perfiles en memoria previamente cargados o autenticados
+        val cachedProfile = localProfiles[userId] ?: (if (cleanEmail.isNotBlank()) {
+            localProfiles.values.find { it.email.equals(cleanEmail, ignoreCase = true) }
+        } else null)
+
+        if (cachedProfile != null) {
+            return@withContext SupabaseResult(data = cachedProfile)
+        }
+
+        SupabaseResult(error = "Perfil no encontrado en el servidor")
+    }
 
     /**
      * Sube una foto a Supabase Storage bucket 'avatars' en 'avatars/<userId>.jpg'

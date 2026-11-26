@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.skillacademy.mobile.data.remote.AuthRepository
 import com.skillacademy.mobile.data.remote.SupabaseProfile
@@ -74,7 +75,7 @@ fun ProfileScreen(
 
     // Sincronizar automáticamente el perfil más reciente desde Supabase al entrar
     LaunchedEffect(profile.id) {
-        val fresh = AuthRepository.loadProfile(profile.id, accessToken)
+        val fresh = AuthRepository.loadProfile(profile.id, accessToken, profile.email)
         if (fresh.isSuccess && fresh.data != null) {
             val p = fresh.data
             fullName = p.fullName
@@ -235,15 +236,40 @@ fun ProfileScreen(
                                 modifier = Modifier.size(36.dp),
                                 strokeWidth = 3.dp
                             )
-                        } else if (avatarUrl.isNotBlank()) {
-                            AsyncImage(
+                        } else if (avatarUrl.isNotBlank() && (avatarUrl.startsWith("http") || avatarUrl.startsWith("file") || avatarUrl.startsWith("content"))) {
+                            SubcomposeAsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(avatarUrl)
                                     .crossfade(true)
                                     .build(),
                                 contentDescription = "Avatar de perfil",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
+                                loading = {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Color.White,
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    }
+                                },
+                                error = {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = iniciales,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 34.sp
+                                        )
+                                    }
+                                }
                             )
                         } else {
                             Text(
