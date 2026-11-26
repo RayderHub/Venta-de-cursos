@@ -149,6 +149,12 @@ async function getPromocionesWearable() {
   }));
 }
 
+fastify.get('/', async () => ({
+  estado: 'ok',
+  servidor: 'SkillAcademy Backend API',
+  mensaje: 'Servicio en linea y operativo'
+}));
+
 fastify.get('/api/widget/smart-tv', async () => smartTvWidget);
 
 fastify.get('/api/widget/wearable', async () => wearableWidget);
