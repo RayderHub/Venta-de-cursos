@@ -115,6 +115,7 @@ fun MainAppScreen() {
 
     var showCheckoutSuccessDialog by remember { mutableStateOf(false) }
     var showPaymentGatewaySheet by remember { mutableStateOf(false) }
+    var directBuyCourse by remember { mutableStateOf<CourseUiModel?>(null) }
     var lastPaidAmount by remember { mutableDoubleStateOf(0.0) }
     var lastOrderNumber by remember { mutableStateOf("") }
     var lastPaymentMethod by remember { mutableStateOf("") }
@@ -305,26 +306,13 @@ fun MainAppScreen() {
                         onBuyNow = { curso ->
                             if (session == null) {
                                 previousScreen = "course_detail"
-                                authRedirectTarget = "my_courses"
+                                authRedirectTarget = "course_detail"
                                 currentScreen = "login"
                             } else {
-                                val sess = session!!
-                                coroutineScope.launch {
-                                    val res = InscripcionesRepository.inscribir(
-                                        userId = sess.userId,
-                                        cursoId = curso.id,
-                                        accessToken = sess.accessToken,
-                                        sessionManager = sessionManager,
-                                        cursoObj = curso
-                                    )
-                                    if (res.isSuccess) {
-                                        reloadEnrolledCourses()
-                                        Toast.makeText(context, "¡Inscripción exitosa a ${curso.titulo}!", Toast.LENGTH_SHORT).show()
-                                        currentScreen = "my_courses"
-                                    } else {
-                                        Toast.makeText(context, res.error ?: "Error al inscribirse", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
+                                // Abrir la ventana/pasarela de pagos en lugar de comprar directamente
+                                directBuyCourse = curso
+                                lastPaidAmount = curso.precio
+                                showPaymentGatewaySheet = true
                             }
                         }
                     )
@@ -343,6 +331,7 @@ fun MainAppScreen() {
                             authRedirectTarget = "cart"
                             currentScreen = "login"
                         } else {
+                            directBuyCourse = null
                             lastPaidAmount = total
                             showPaymentGatewaySheet = true
                         }
@@ -429,21 +418,33 @@ fun MainAppScreen() {
     // ── Pasarela de Pago Transaccional (Sección 3.1) ──────────────────────────
     if (showPaymentGatewaySheet && session != null) {
         val sess = session!!
+        val targetCourses = if (directBuyCourse != null) listOf(directBuyCourse!!) else cartItems
+        val totalToPay = if (directBuyCourse != null) directBuyCourse!!.precio else financialSummary.total
+        val subtotalToPay = if (directBuyCourse != null) (directBuyCourse!!.oldPrecio ?: directBuyCourse!!.precio) else financialSummary.subtotal
+        val discountToPay = if (directBuyCourse != null) (subtotalToPay - totalToPay).coerceAtLeast(0.0) else financialSummary.discountAmount
+
         PaymentGatewayBottomSheet(
-            totalAmount = financialSummary.total,
-            subtotalAmount = financialSummary.subtotal,
-            discountAmount = financialSummary.discountAmount,
-            courses = cartItems,
+            totalAmount = totalToPay,
+            subtotalAmount = subtotalToPay,
+            discountAmount = discountToPay,
+            courses = targetCourses,
             userEmail = sess.email,
-            onDismissRequest = { showPaymentGatewaySheet = false },
+            onDismissRequest = {
+                showPaymentGatewaySheet = false
+                directBuyCourse = null
+            },
             onPaymentConfirmed = { orderCode, method ->
                 showPaymentGatewaySheet = false
                 lastOrderNumber = orderCode
                 lastPaymentMethod = method
-                lastPaidAmount = financialSummary.total
+                lastPaidAmount = totalToPay
+                val purchasedList = targetCourses.toList()
+                val isDirect = directBuyCourse != null
+                directBuyCourse = null
+
                 coroutineScope.launch {
                     // 1. Inscribir cada curso en la cuenta del estudiante
-                    cartItems.forEach { item ->
+                    purchasedList.forEach { item ->
                         InscripcionesRepository.inscribir(
                             userId = sess.userId,
                             cursoId = item.id,
@@ -452,15 +453,19 @@ fun MainAppScreen() {
                             cursoObj = item
                         )
                     }
-                    // 2. Refrescar cursos de la cuenta
+                    // 2. Si venía del carrito, limpiar los items del carrito
+                    if (!isDirect) {
+                        cartViewModel.clearCart()
+                    }
+                    // 3. Refrescar cursos de la cuenta
                     reloadEnrolledCourses()
-                    // 3. Notificación nativa de compra exitosa
+                    // 4. Notificación nativa de compra exitosa
                     SkillNotificationHelper.showPromoNotification(
                         context,
                         "¡Compra Confirmada! (Orden $orderCode)",
-                        "Tus ${cartItems.size} curso(s) ya están habilitados en Mis Cursos. ¡Comienza a aprender!"
+                        "Tus ${purchasedList.size} curso(s) ya están habilitados en Mis Cursos. ¡Comienza a aprender!"
                     )
-                    // 4. Mostrar confirmación visual de la orden
+                    // 5. Mostrar confirmación visual de la orden
                     showCheckoutSuccessDialog = true
                 }
             }

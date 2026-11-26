@@ -139,16 +139,11 @@ export class CourseDetail {
       return;
     }
 
-    this.comprando.set(true);
-    this.message.set('');
-    const { error } = await this.inscripciones.inscribir(this.id);
-    this.comprando.set(false);
-
-    if (error) {
-      this.message.set(error.message);
-    } else {
-      await this.router.navigate(['/usuario/dashboard']);
+    if (!this.isInCart()) {
+      this.carrito.add(course);
     }
+    // Redirigir a la pasarela/pantalla de pagos y confirmacion del pedido
+    await this.router.navigate(['/carrito']);
   }
 
   agregarAlCarrito(): void {
