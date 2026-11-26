@@ -243,24 +243,31 @@ object CoursesRepository {
      * Parsea el objeto JSON que devuelve Elasticsearch (campos en español,
      * misma forma que el índice indexado por elasticsearch_service.js).
      */
-    private fun parseCursoES(o: JSONObject): CourseUiModel = CourseUiModel(
-        id            = o.optLong("id", 0),
-        titulo        = o.optString("titulo", "Sin título"),
-        categoria     = o.optString("categoria", "General"),
-        nivel         = o.optString("nivel", "Principiante"),
-        instructor    = o.optString("instructor", "Instructor"),
-        instructorId  = o.optString("instructor_id", ""),
-        precio        = o.optDouble("precio", 0.0),
-        oldPrecio     = o.optDouble("old_precio", 0.0).takeIf { it > 0 },
-        imagen        = o.optString("imagen", ""),
-        imagenesGaleria = emptyList(),
-        descripcion   = o.optString("descripcion", ""),
-        requisitos    = "",
-        queAprenderas = "",
-        rating        = o.optDouble("rating", 0.0),
-        reviews       = o.optInt("reviews", 0),
-        isBestSeller  = o.optInt("reviews", 0) >= 3
-    )
+    private fun parseCursoES(o: JSONObject): CourseUiModel {
+        val galeriaRaw = o.optJSONArray("imagenes_galeria")
+        val galeria = if (galeriaRaw != null) {
+            (0 until galeriaRaw.length()).map { galeriaRaw.getString(it) }
+        } else emptyList()
+
+        return CourseUiModel(
+            id            = o.optLong("id", 0),
+            titulo        = o.optString("titulo", "Sin título"),
+            categoria     = o.optString("categoria", "General"),
+            nivel         = o.optString("nivel", "Principiante"),
+            instructor    = o.optString("instructor", "Instructor"),
+            instructorId  = o.optString("instructor_id", ""),
+            precio        = o.optDouble("precio", 0.0),
+            oldPrecio     = o.optDouble("old_precio", 0.0).takeIf { it > 0 },
+            imagen        = o.optString("imagen", ""),
+            imagenesGaleria = galeria,
+            descripcion   = o.optString("descripcion", ""),
+            requisitos    = o.optString("requisitos", ""),
+            queAprenderas = o.optString("que_aprenderas", ""),
+            rating        = o.optDouble("rating", 0.0),
+            reviews       = o.optInt("reviews", 0),
+            isBestSeller  = o.optInt("reviews", 0) >= 3
+        )
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // BANNERS — generados dinámicamente desde cursos publicados

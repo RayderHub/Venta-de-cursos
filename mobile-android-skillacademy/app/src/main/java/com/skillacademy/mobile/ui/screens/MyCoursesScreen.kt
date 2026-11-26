@@ -171,7 +171,7 @@ fun MyCoursesScreen(
                                 .clip(RoundedCornerShape(12.dp))
                         ) {
                             CourseImage(
-                                imageSource = curso.imagen,
+                                imageSource = curso.imagenPrincipal,
                                 contentDescription = curso.titulo,
                                 modifier = Modifier.fillMaxSize()
                             )

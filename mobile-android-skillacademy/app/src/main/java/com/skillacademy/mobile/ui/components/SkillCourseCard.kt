@@ -49,7 +49,7 @@ fun SkillCourseCard(
             ) {
                 // Miniatura real agregada por el profesor (Base64, URL o Tema)
                 CourseImage(
-                    imageSource = curso.imagen,
+                    imageSource = curso.imagenPrincipal,
                     contentDescription = curso.titulo,
                     modifier = Modifier.fillMaxSize()
                 )

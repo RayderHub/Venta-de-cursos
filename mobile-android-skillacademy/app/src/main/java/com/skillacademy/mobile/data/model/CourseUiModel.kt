@@ -35,6 +35,10 @@ data class CourseUiModel(
     /** Todas las imágenes del carrusel: primero galería, luego la principal como fallback */
     val todasImagenes: List<String>
         get() = if (imagenesGaleria.isNotEmpty()) imagenesGaleria else listOf(imagen)
+
+    /** Imagen principal consistente para tarjetas, catálogos, inicio y carritos */
+    val imagenPrincipal: String
+        get() = imagenesGaleria.firstOrNull { it.isNotBlank() } ?: imagen
 }
 
 /** Lección individual de un curso */
