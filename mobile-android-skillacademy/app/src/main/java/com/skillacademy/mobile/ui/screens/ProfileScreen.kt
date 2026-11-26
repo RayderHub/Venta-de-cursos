@@ -1,6 +1,13 @@
 package com.skillacademy.mobile.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,6 +35,7 @@ import com.skillacademy.mobile.data.remote.AuthRepository
 import com.skillacademy.mobile.data.remote.SupabaseProfile
 import com.skillacademy.mobile.ui.theme.*
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Pantalla de Perfil de Usuario — Entregable 2 & Prácticas 5/6
@@ -53,6 +61,69 @@ fun ProfileScreen(
     var bio by remember(profile) { mutableStateOf(profile.bio ?: "") }
     var isSaving by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
+
+    // Launcher de Cámara nativa del dispositivo
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) {
+            try {
+                val file = File(context.filesDir, "avatar_${System.currentTimeMillis()}.jpg")
+                file.outputStream().use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                }
+                avatarUrl = Uri.fromFile(file).toString()
+                Toast.makeText(context, "¡Foto capturada! Pulsa 'Guardar Cambios' para confirmarla.", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error al guardar foto: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Permiso de Cámara en tiempo de ejecución
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            cameraLauncher.launch(null)
+        } else {
+            Toast.makeText(
+                context,
+                "Se requiere permiso de cámara para tomar tu foto de perfil.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    fun requestCamera() {
+        val permissionStatus = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+        if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
+            cameraLauncher.launch(null)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    // Launcher de Galería del dispositivo
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val file = File(context.filesDir, "avatar_${System.currentTimeMillis()}.jpg")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                avatarUrl = Uri.fromFile(file).toString()
+                Toast.makeText(context, "¡Foto de galería seleccionada! Pulsa 'Guardar Cambios'.", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error al seleccionar imagen: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     val roleColor = Color(profile.roleColor)
     val iniciales = remember(fullName, profile.email) {
@@ -94,27 +165,50 @@ fun ProfileScreen(
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Avatar grande
+                // Avatar interactivo con botón de cámara
                 Box(
-                    modifier = Modifier
-                        .size(90.dp)
-                        .clip(CircleShape)
-                        .background(roleColor),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.BottomEnd,
+                    modifier = Modifier.padding(4.dp)
                 ) {
-                    if (avatarUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "Avatar de perfil",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Text(
-                            text = iniciales,
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 32.sp
+                    Box(
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(CircleShape)
+                            .background(roleColor)
+                            .clickable { showPhotoSourceDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (avatarUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = avatarUrl,
+                                contentDescription = "Avatar de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Text(
+                                text = iniciales,
+                                color = Color.White,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 32.sp
+                            )
+                        }
+                    }
+
+                    // Botón flotante de cámara
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(SkillCyan)
+                            .clickable { showPhotoSourceDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Cambiar foto",
+                            tint = SkillNavy,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -211,6 +305,34 @@ fun ProfileScreen(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Botones nativos: Cámara y Galería
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { requestCamera() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SkillCyan)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Cámara", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        onClick = { galleryLauncher.launch("image/*") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SkillCyan)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Galería", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
 
                 // URL de Foto / Avatar
                 OutlinedTextField(
@@ -387,6 +509,66 @@ fun ProfileScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+    }
+
+    // Modal Selector de Origen de Foto (Cámara / Galería)
+    if (showPhotoSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, tint = SkillCyan)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Foto de Perfil", fontWeight = FontWeight.Bold, color = SkillTextPrimary)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Selecciona cómo deseas actualizar tu foto de perfil:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SkillTextMuted
+                    )
+
+                    Button(
+                        onClick = {
+                            showPhotoSourceDialog = false
+                            requestCamera()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SkillCyan),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, tint = SkillNavy, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Tomar foto con la cámara", color = SkillNavy, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            showPhotoSourceDialog = false
+                            galleryLauncher.launch("image/*")
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = SkillCyan, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Elegir de la galería", color = SkillCyan, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPhotoSourceDialog = false }) {
+                    Text("Cancelar", color = SkillTextMuted)
+                }
+            },
+            containerColor = SkillSurface
+        )
     }
 
     // Modal de Confirmación de Logout

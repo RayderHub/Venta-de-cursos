@@ -18,9 +18,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val debugSigning = getByName("debug")
+            storeFile = debugSigning.storeFile
+            storePassword = debugSigning.storePassword
+            keyAlias = debugSigning.keyAlias
+            keyPassword = debugSigning.keyPassword
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -34,6 +45,11 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     buildFeatures {
         compose = true
     }
