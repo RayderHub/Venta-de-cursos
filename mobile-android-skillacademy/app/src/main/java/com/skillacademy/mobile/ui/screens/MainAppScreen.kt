@@ -225,6 +225,8 @@ fun MainAppScreen() {
             }
         }
     ) { paddingValues ->
+        val enrolledIds = remember(enrolledCourses) { enrolledCourses.map { it.curso.id }.toSet() }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -235,6 +237,7 @@ fun MainAppScreen() {
                     courses = courses,
                     banners = banners,
                     categories = categories,
+                    enrolledCourseIds = enrolledIds,
                     isLoading = isLoading,
                     networkError = networkError,
                     onCourseClick = { cursoId ->
@@ -249,8 +252,12 @@ fun MainAppScreen() {
                         currentScreen = "catalog"
                     },
                     onAddToCart = { curso ->
-                        cartViewModel.addToCart(curso)
-                        Toast.makeText(context, "Agregado al carrito: ${curso.titulo}", Toast.LENGTH_SHORT).show()
+                        if (enrolledIds.contains(curso.id)) {
+                            Toast.makeText(context, "Ya posees el curso '${curso.titulo}'", Toast.LENGTH_SHORT).show()
+                        } else {
+                            cartViewModel.addToCart(curso)
+                            Toast.makeText(context, "Agregado al carrito: ${curso.titulo}", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     onRefresh = {
                         coursesViewModel.loadInitialData()
@@ -270,6 +277,7 @@ fun MainAppScreen() {
                 "catalog" -> CatalogScreen(
                     courses = courses,
                     categories = categories,
+                    enrolledCourseIds = enrolledIds,
                     isLoading = isLoading,
                     initialCategory = selectedCatalogCategory,
                     onCourseClick = { cursoId ->
@@ -279,8 +287,12 @@ fun MainAppScreen() {
                         currentScreen = "course_detail"
                     },
                     onAddToCart = { curso ->
-                        cartViewModel.addToCart(curso)
-                        Toast.makeText(context, "Agregado al carrito: ${curso.titulo}", Toast.LENGTH_SHORT).show()
+                        if (enrolledIds.contains(curso.id)) {
+                            Toast.makeText(context, "Ya posees el curso '${curso.titulo}'", Toast.LENGTH_SHORT).show()
+                        } else {
+                            cartViewModel.addToCart(curso)
+                            Toast.makeText(context, "Agregado al carrito: ${curso.titulo}", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     onSearchQueryChanged = { query ->
                         // Delega la búsqueda al ViewModel, que llama a Elasticsearch con debounce
@@ -290,21 +302,39 @@ fun MainAppScreen() {
 
                 "course_detail" -> {
                     val id = selectedCourseId ?: 1L
+                    val isAlreadyEnrolled = enrolledIds.contains(id) || (selectedCourse != null && enrolledIds.contains(selectedCourse!!.id))
                     CourseDetailScreen(
                         courseId = id,
                         courseProvider = { coursesViewModel.getCourseById(it) },
                         selectedCourse = selectedCourse,
                         isLoadingDetail = isLoadingDetail,
+                        isAlreadyEnrolled = isAlreadyEnrolled,
                         onBackClick = {
                             selectedCourseId = null
                             currentScreen = if (previousScreen in listOf("home", "catalog")) previousScreen else "home"
                         },
+                        onGoToCourse = { c ->
+                            learningCourse = c
+                            learningCourseProgress = enrolledCourses.firstOrNull { it.curso.id == c.id }?.progreso ?: 0
+                            previousScreen = "course_detail"
+                            currentScreen = "course_learn"
+                        },
                         onAddToCart = { curso ->
-                            cartViewModel.addToCart(curso)
-                            Toast.makeText(context, "Agregado al carrito: ${curso.titulo}", Toast.LENGTH_SHORT).show()
+                            if (isAlreadyEnrolled) {
+                                Toast.makeText(context, "Ya posees el curso '${curso.titulo}'", Toast.LENGTH_SHORT).show()
+                            } else {
+                                cartViewModel.addToCart(curso)
+                                Toast.makeText(context, "Agregado al carrito: ${curso.titulo}", Toast.LENGTH_SHORT).show()
+                            }
                         },
                         onBuyNow = { curso ->
-                            if (session == null) {
+                            if (isAlreadyEnrolled) {
+                                Toast.makeText(context, "Ya posees este curso", Toast.LENGTH_SHORT).show()
+                                learningCourse = curso
+                                learningCourseProgress = enrolledCourses.firstOrNull { it.curso.id == curso.id }?.progreso ?: 0
+                                previousScreen = "course_detail"
+                                currentScreen = "course_learn"
+                            } else if (session == null) {
                                 previousScreen = "course_detail"
                                 authRedirectTarget = "course_detail"
                                 currentScreen = "login"
@@ -322,6 +352,7 @@ fun MainAppScreen() {
                     cartItems = cartItems,
                     isLoggedIn = session != null,
                     userDisplayName = profile?.fullName?.ifBlank { profile?.email },
+                    enrolledCourseIds = enrolledIds,
                     onRemoveItem = { id ->
                         cartViewModel.removeItem(id)
                     },

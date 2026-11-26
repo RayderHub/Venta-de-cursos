@@ -40,6 +40,7 @@ fun CartScreen(
     cartItems: List<CourseUiModel>,
     isLoggedIn: Boolean = false,
     userDisplayName: String? = null,
+    enrolledCourseIds: Set<Long> = emptySet(),
     onRemoveItem: (Long) -> Unit,
     onCheckoutClick: (Double) -> Unit,
     onExploreCourses: () -> Unit
@@ -169,11 +170,20 @@ fun CartScreen(
                                     color = SkillTextPrimary,
                                     maxLines = 1
                                 )
-                                Text(
-                                    text = "Instructor: ${curso.instructor}",
-                                    fontSize = 11.sp,
-                                    color = SkillTextMuted
-                                )
+                                if (enrolledCourseIds.contains(curso.id)) {
+                                    Text(
+                                        text = "✓ Ya posees este curso",
+                                        color = SkillEmerald,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Instructor: ${curso.instructor}",
+                                        fontSize = 11.sp,
+                                        color = SkillTextMuted
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(

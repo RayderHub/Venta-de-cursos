@@ -31,6 +31,7 @@ import com.skillacademy.mobile.ui.theme.*
 fun CatalogScreen(
     courses: List<CourseUiModel>,
     categories: List<CategoryUiModel>,
+    enrolledCourseIds: Set<Long> = emptySet(),
     isLoading: Boolean = false,
     initialCategory: String? = null,
     onCourseClick: (Long) -> Unit,
@@ -213,6 +214,7 @@ fun CatalogScreen(
                     items(filteredCourses) { curso ->
                         SkillCourseCard(
                             curso = curso,
+                            isOwned = enrolledCourseIds.contains(curso.id),
                             onCourseClick = onCourseClick,
                             onAddToCart = onAddToCart
                         )

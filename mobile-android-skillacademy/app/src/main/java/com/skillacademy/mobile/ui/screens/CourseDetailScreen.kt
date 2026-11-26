@@ -52,9 +52,11 @@ fun CourseDetailScreen(
     courseProvider: (Long) -> CourseUiModel?,
     isLoadingDetail: Boolean = false,
     selectedCourse: CourseUiModel? = null,
+    isAlreadyEnrolled: Boolean = false,
     onBackClick: () -> Unit,
     onAddToCart: (CourseUiModel) -> Unit,
-    onBuyNow: (CourseUiModel) -> Unit
+    onBuyNow: (CourseUiModel) -> Unit,
+    onGoToCourse: (CourseUiModel) -> Unit = {}
 ) {
     // Prioridad: selectedCourse (dato completo del ViewModel) → courseProvider (catálogo rápido)
     val curso = selectedCourse ?: courseProvider(courseId)
@@ -95,33 +97,50 @@ fun CourseDetailScreen(
         bottomBar = {
             // Barra de acción fija inferior
             Surface(shadowElevation = 8.dp, color = SkillSurface) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { onAddToCart(curso) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.5.dp, SkillEmerald),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SkillEmerald)
-                    ) {
-                        Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Al Carrito", fontWeight = FontWeight.Bold)
-                    }
+                if (isAlreadyEnrolled) {
                     Button(
-                        onClick = { onBuyNow(curso) },
-                        modifier = Modifier.weight(1f),
+                        onClick = { onGoToCourse(curso) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = SkillEmerald)
                     ) {
-                        Icon(Icons.Default.Bolt, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Comprar Ya", fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Ya posees este curso — Ir a Aprender", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { onAddToCart(curso) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.5.dp, SkillEmerald),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = SkillEmerald)
+                        ) {
+                            Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Al Carrito", fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = { onBuyNow(curso) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SkillEmerald)
+                        ) {
+                            Icon(Icons.Default.Bolt, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Comprar Ya", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -259,22 +278,44 @@ fun CourseDetailScreen(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // Precio
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "$${curso.precio} USD",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Black,
-                            color = SkillEmerald
-                        )
-                        curso.oldPrecio?.let {
-                            Spacer(Modifier.width(10.dp))
+                    if (isAlreadyEnrolled) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = SkillEmerald.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, SkillEmerald.copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.CheckCircle, null, tint = SkillEmerald, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "Ya posees este curso (Inscrito)",
+                                    color = SkillEmerald,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    } else {
+                        // Precio
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "$$it",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = SkillTextMuted,
-                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                text = "$${curso.precio} USD",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Black,
+                                color = SkillEmerald
                             )
+                            curso.oldPrecio?.let {
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = "$$it",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = SkillTextMuted,
+                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                )
+                            }
                         }
                     }
                 }

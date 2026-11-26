@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddShoppingCart
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -27,6 +29,7 @@ fun SkillCourseCard(
     curso: CourseUiModel,
     onCourseClick: (Long) -> Unit,
     onAddToCart: (CourseUiModel) -> Unit,
+    isOwned: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -66,8 +69,8 @@ fun SkillCourseCard(
                         )
                 )
 
-                // Badge de descuento (-XX%)
-                curso.descuentoPorcentaje?.let { desc ->
+                // Badge Adquirido o Descuento
+                if (isOwned) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -76,12 +79,34 @@ fun SkillCourseCard(
                             .background(SkillEmerald)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = "-$desc%",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "Adquirido",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                } else {
+                    curso.descuentoPorcentaje?.let { desc ->
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(10.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(SkillEmerald)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "-$desc%",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                 }
 
@@ -162,46 +187,72 @@ fun SkillCourseCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Precios y Botón de Añadir al Carrito
+                // Precios y Botón de Acción (Comprar / Ir a aprender)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.Bottom) {
+                    if (isOwned) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "$${curso.precio}",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                text = "En tu biblioteca",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
                                 color = SkillEmerald
                             )
-                            curso.oldPrecio?.let { old ->
-                                Spacer(modifier = Modifier.width(6.dp))
+                        }
+
+                        FilledIconButton(
+                            onClick = { onCourseClick(curso.id) },
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = SkillEmerald.copy(alpha = 0.18f),
+                                contentColor = SkillEmerald
+                            ),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Ver curso adquirido",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        Column {
+                            Row(verticalAlignment = Alignment.Bottom) {
                                 Text(
-                                    text = "$$old",
-                                    fontSize = 13.sp,
-                                    textDecoration = TextDecoration.LineThrough,
-                                    color = SkillTextMuted
+                                    text = "$${curso.precio}",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = SkillEmerald
                                 )
+                                curso.oldPrecio?.let { old ->
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "$$old",
+                                        fontSize = 13.sp,
+                                        textDecoration = TextDecoration.LineThrough,
+                                        color = SkillTextMuted
+                                    )
+                                }
                             }
                         }
-                    }
 
-                    // Botón de acción rápida Carrito
-                    FilledIconButton(
-                        onClick = { onAddToCart(curso) },
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = SkillEmerald,
-                            contentColor = Color.White
-                        ),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AddShoppingCart,
-                            contentDescription = "Añadir al carrito",
-                            modifier = Modifier.size(18.dp)
-                        )
+                        // Botón de acción rápida Carrito
+                        FilledIconButton(
+                            onClick = { onAddToCart(curso) },
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = SkillEmerald,
+                                contentColor = Color.White
+                            ),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AddShoppingCart,
+                                contentDescription = "Añadir al carrito",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }

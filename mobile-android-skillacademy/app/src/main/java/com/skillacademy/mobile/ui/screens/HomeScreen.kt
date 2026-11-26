@@ -42,6 +42,7 @@ fun HomeScreen(
     courses: List<CourseUiModel>,
     banners: List<BannerUiModel>,
     categories: List<CategoryUiModel>,
+    enrolledCourseIds: Set<Long> = emptySet(),
     isLoading: Boolean = false,
     networkError: String? = null,
     onCourseClick: (Long) -> Unit,
@@ -347,6 +348,7 @@ fun HomeScreen(
             items(filteredCourses) { curso ->
                 SkillCourseCard(
                     curso = curso,
+                    isOwned = enrolledCourseIds.contains(curso.id),
                     onCourseClick = onCourseClick,
                     onAddToCart = onAddToCart,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
