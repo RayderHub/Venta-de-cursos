@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <!-- Tarjeta interna 100% opaca para que las capas de la pila no se transparenten ni se encimen -->
+    <!-- Tarjeta interna 100% opaca y nítida sin transparencias que causen textos encimados -->
     <solid android:color="#1E293B" />
-    <corners android:radius="14dp" />
+    <corners android:radius="12dp" />
     <stroke
-        android:width="1.2dp"
+        android:width="1dp"
         android:color="#334155" />
 </shape>

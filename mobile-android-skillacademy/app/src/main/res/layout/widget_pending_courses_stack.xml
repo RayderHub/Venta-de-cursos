@@ -8,20 +8,20 @@
     android:paddingHorizontal="10dp"
     android:paddingVertical="8dp">
 
-    <!-- Encabezado del Widget transparente -->
+    <!-- Encabezado del Widget moderno -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingBottom="4dp">
+        android:paddingBottom="6dp">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="SkillAcademy • Mis Cursos"
-            android:textColor="#E2E8F0"
+            android:textColor="#F1F5F9"
             android:textSize="11sp"
             android:textStyle="bold" />
 
@@ -29,7 +29,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/widget_badge_bg"
-            android:paddingHorizontal="6dp"
+            android:paddingHorizontal="7dp"
             android:paddingVertical="2dp"
             android:text="↕ Deslizar"
             android:textColor="#5EEAD4"
@@ -37,18 +37,22 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Carrusel tipo StackView (tarjetas deslizables con el dedo en 3D) -->
+    <!-- Lista limpia y moderna de cursos (reemplaza el StackView 3D que provocaba texto encimado y translúcido) -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <StackView
+        <ListView
             android:id="@+id/widget_stack_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:animateFirstView="true"
-            android:loopViews="true" />
+            android:divider="@android:color/transparent"
+            android:dividerHeight="8dp"
+            android:scrollbars="none"
+            android:clipToPadding="false"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
 
         <!-- Vista vacía cuando no hay cursos pendientes -->
         <TextView

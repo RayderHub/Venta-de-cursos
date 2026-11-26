@@ -80,8 +80,13 @@ object SupabaseHttp {
     }
 
     /** Envía body como JSON y espera JSONObject de vuelta. */
-    suspend fun post(path: String, body: JSONObject, accessToken: String? = null): SupabaseResult<JSONObject> {
-        val r = request(path, "POST", body, accessToken)
+    suspend fun post(
+        path: String,
+        body: JSONObject,
+        accessToken: String? = null,
+        extraHeaders: Map<String, String> = emptyMap()
+    ): SupabaseResult<JSONObject> {
+        val r = request(path, "POST", body, accessToken, extraHeaders)
         return if (r.isSuccess) {
             try {
                 val data = r.data!!

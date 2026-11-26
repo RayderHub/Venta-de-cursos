@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
@@ -38,7 +39,8 @@ import com.skillacademy.mobile.ui.theme.*
 fun MyCoursesScreen(
     enrolledCourses: List<EnrolledCourse>,
     isLoading: Boolean = false,
-    onCourseLearnClick: (CourseUiModel, Int) -> Unit,
+    onCourseClick: (Long) -> Unit,
+    onCourseLearnClick: (CourseUiModel, Int) -> Unit = { _, _ -> },
     onExploreClick: () -> Unit
 ) {
     if (isLoading) {
@@ -155,7 +157,7 @@ fun MyCoursesScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onCourseLearnClick(curso, progreso) }
+                    .clickable { onCourseClick(curso.id) }
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -236,23 +238,23 @@ fun MyCoursesScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Botón para acceder al aula
+                    // Botón para ver información, calificar y acceder al contenido
                     Button(
-                        onClick = { onCourseLearnClick(curso, progreso) },
+                        onClick = { onCourseClick(curso.id) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (progreso >= 100) SkillEmerald else SkillNavy
+                            containerColor = SkillNavy
                         ),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth().height(42.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Continuar aprendiendo",
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Ver detalles y calificar",
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (progreso >= 100) "Repasar Curso" else "Continuar Aprendiendo",
+                            text = "Ver Información y Calificar",
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )

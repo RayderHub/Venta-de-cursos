@@ -34,17 +34,19 @@ import coil.compose.AsyncImage
 import com.skillacademy.mobile.data.model.CourseUiModel
 import com.skillacademy.mobile.data.model.LessonUiModel
 import com.skillacademy.mobile.data.model.ReviewUiModel
+import com.skillacademy.mobile.data.remote.InscripcionesRepository
 import com.skillacademy.mobile.ui.components.CourseImage
 import com.skillacademy.mobile.ui.theme.*
+import kotlinx.coroutines.launch
 
 /**
- * CourseDetailScreen — Entregable 2
+ * CourseDetailScreen — Vista de Información, Reseñas, Lecciones y Calificación del Curso.
  *
  *  ✔ Carrusel de imágenes reales de Supabase (galería de fotos del curso)
- *  ✔ Datos completos del instructor desde profiles
- *  ✔ 3 Tabs: Descripción | Lecciones | Requisitos
- *  ✔ Reseñas reales con nombre del reviewer (curso_reviews_public)
- *  ✔ Cero datos hardcodeados; todo viene del ViewModel
+ *  ✔ Sistema de calificaciones interactivo (estrellas 1-5 + reseña) sincronizado con Supabase RPC
+ *  ✔ Vista previa compacta de las lecciones del curso
+ *  ✔ Botón "Contenido" para ingresar al aula virtual de aprendizaje (CourseLearnScreen)
+ *  ✔ Pestañas completas: Descripción, Lecciones y Requisitos
  */
 @Composable
 fun CourseDetailScreen(
@@ -53,6 +55,9 @@ fun CourseDetailScreen(
     isLoadingDetail: Boolean = false,
     selectedCourse: CourseUiModel? = null,
     isAlreadyEnrolled: Boolean = false,
+    userId: String? = null,
+    accessToken: String? = null,
+    onRatingSubmitted: () -> Unit = {},
     onBackClick: () -> Unit,
     onAddToCart: (CourseUiModel) -> Unit,
     onBuyNow: (CourseUiModel) -> Unit,
@@ -70,6 +75,29 @@ fun CourseDetailScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("DESCRIPCIÓN", "LECCIONES", "REQUISITOS")
+
+    // Estado del sistema de calificación del usuario
+    var userRating by remember { mutableIntStateOf(5) }
+    var userComment by remember { mutableStateOf("") }
+    var hasExistingReview by remember { mutableStateOf(false) }
+    var isSubmittingRating by remember { mutableStateOf(false) }
+    var ratingFeedbackMsg by remember { mutableStateOf<String?>(null) }
+    var isRatingSuccess by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Cargar reseña previa del alumno si ya está inscrito
+    LaunchedEffect(curso.id, userId) {
+        if (isAlreadyEnrolled && !userId.isNullOrBlank()) {
+            try {
+                val review = InscripcionesRepository.fetchUserReview(userId, curso.id, accessToken)
+                if (review != null) {
+                    userRating = review.rating
+                    userComment = review.comment
+                    hasExistingReview = true
+                }
+            } catch (_: Exception) {}
+        }
+    }
 
     // Imágenes del carrusel: galería de Supabase si hay, sino una imagen placeholder temática
     val imagenes = remember(curso) {
@@ -108,9 +136,9 @@ fun CourseDetailScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = SkillEmerald)
                     ) {
-                        Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.PlayCircleOutline, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Ya posees este curso — Ir a Aprender", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Contenido — Ir a Lecciones", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 } else {
                     Row(
@@ -234,7 +262,7 @@ fun CourseDetailScreen(
             }
 
             // ────────────────────────────────────────────────────────
-            // 2. ENCABEZADO: Título, Nivel, Categoría, Precio
+            // 2. ENCABEZADO: Título, Nivel, Categoría, Rating
             // ────────────────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -257,7 +285,7 @@ fun CourseDetailScreen(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Rating + Reviews
+                    // Rating general + Reviews
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         repeat(5) { i ->
                             Icon(
@@ -322,13 +350,269 @@ fun CourseDetailScreen(
             }
 
             // ────────────────────────────────────────────────────────
-            // 3. INSTRUCTOR
+            // 3. SECCIÓN PARA USUARIOS INSCRITOS:
+            //    - Botón "Contenido"
+            //    - Sistema interactivo de calificación (Estrellas + Comentario)
+            //    - Vista previa compacta de lecciones
+            // ────────────────────────────────────────────────────────
+            if (isAlreadyEnrolled) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // Botón de acceso directo a Contenido
+                        Button(
+                            onClick = { onGoToCourse(curso) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SkillEmerald)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Ir al Contenido (Lecciones y Tareas)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+
+                        // Tarjeta de Calificación Interactiva
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = SkillSurface),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, SkillBorder.copy(alpha = 0.6f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.RateReview, null, tint = SkillEmerald, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = if (hasExistingReview) "Tu Calificación (Ya calificado)" else "Califica este curso",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = SkillTextPrimary
+                                    )
+                                }
+
+                                Spacer(Modifier.height(10.dp))
+
+                                // Selector de estrellas interactivo (1 a 5)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    for (star in 1..5) {
+                                        IconButton(
+                                            onClick = { userRating = star },
+                                            modifier = Modifier.size(42.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (star <= userRating) Icons.Default.Star else Icons.Default.StarBorder,
+                                                contentDescription = "$star estrellas",
+                                                tint = Color(0xFFFBBF24),
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Text(
+                                    text = when (userRating) {
+                                        5 -> "Excelente (5 estrellas)"
+                                        4 -> "Muy Bueno (4 estrellas)"
+                                        3 -> "Bueno (3 estrellas)"
+                                        2 -> "Regular (2 estrellas)"
+                                        else -> "Malo (1 estrella)"
+                                    },
+                                    color = SkillTextSecondary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+
+                                Spacer(Modifier.height(12.dp))
+
+                                // Campo de texto para comentario
+                                OutlinedTextField(
+                                    value = userComment,
+                                    onValueChange = { userComment = it },
+                                    label = { Text("Escribe tu opinión o reseña...") },
+                                    placeholder = { Text("¿Qué te pareció el contenido del curso?") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxLines = 3,
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = SkillEmerald,
+                                        unfocusedBorderColor = SkillBorder,
+                                        focusedLabelColor = SkillEmerald,
+                                        unfocusedLabelColor = SkillTextMuted,
+                                        focusedTextColor = SkillTextPrimary,
+                                        unfocusedTextColor = SkillTextPrimary
+                                    )
+                                )
+
+                                // Mensaje de éxito / error
+                                ratingFeedbackMsg?.let { msg ->
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = msg,
+                                        color = if (isRatingSuccess) SkillEmerald else SkillDiscountRed,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                Spacer(Modifier.height(12.dp))
+
+                                // Botón para guardar o actualizar la reseña
+                                Button(
+                                    onClick = {
+                                        if (userId.isNullOrBlank()) return@Button
+                                        coroutineScope.launch {
+                                            isSubmittingRating = true
+                                            ratingFeedbackMsg = null
+                                            val res = InscripcionesRepository.calificarCurso(
+                                                userId = userId,
+                                                cursoId = curso.id,
+                                                rating = userRating,
+                                                comment = userComment.trim(),
+                                                accessToken = accessToken
+                                            )
+                                            isSubmittingRating = false
+                                            if (res.isSuccess) {
+                                                hasExistingReview = true
+                                                isRatingSuccess = true
+                                                ratingFeedbackMsg = "¡Calificación guardada y promedios actualizados!"
+                                                onRatingSubmitted()
+                                            } else {
+                                                isRatingSuccess = false
+                                                ratingFeedbackMsg = res.error ?: "No se pudo guardar la calificación. Revisa tu conexión."
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(42.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    enabled = !isSubmittingRating && !userId.isNullOrBlank(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = SkillEmerald)
+                                ) {
+                                    if (isSubmittingRating) {
+                                        CircularProgressIndicator(
+                                            color = Color.White,
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Text(
+                                            text = if (hasExistingReview) "Actualizar Calificación" else "Enviar Calificación",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Resumen compacto de lecciones incluidas
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = SkillSurface),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, SkillBorder.copy(alpha = 0.6f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Lecciones incluidas",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = SkillTextPrimary
+                                    )
+                                    Text(
+                                        text = "${curso.lecciones.size} lecciones",
+                                        fontSize = 12.sp,
+                                        color = SkillCyan,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                Spacer(Modifier.height(10.dp))
+
+                                if (curso.lecciones.isEmpty()) {
+                                    Text(
+                                        text = "Las lecciones se están preparando.",
+                                        fontSize = 12.sp,
+                                        color = SkillTextMuted
+                                    )
+                                } else {
+                                    curso.lecciones.take(5).forEachIndexed { index, l ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(22.dp)
+                                                    .clip(CircleShape)
+                                                    .background(SkillEmerald.copy(alpha = 0.15f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "${index + 1}",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = SkillEmerald
+                                                )
+                                            }
+                                            Spacer(Modifier.width(10.dp))
+                                            Text(
+                                                text = l.titulo,
+                                                fontSize = 13.sp,
+                                                color = SkillTextSecondary,
+                                                modifier = Modifier.weight(1f),
+                                                maxLines = 1
+                                            )
+                                            if (l.duracionMinutos > 0) {
+                                                Text(
+                                                    text = "${l.duracionMinutos}m",
+                                                    fontSize = 11.sp,
+                                                    color = SkillTextMuted
+                                                )
+                                            }
+                                        }
+                                    }
+                                    if (curso.lecciones.size > 5) {
+                                        Text(
+                                            text = "+ ${curso.lecciones.size - 5} lecciones más en el aula",
+                                            fontSize = 11.sp,
+                                            color = SkillTextMuted,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ────────────────────────────────────────────────────────
+            // 4. INSTRUCTOR
             // ────────────────────────────────────────────────────────
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                     colors = CardDefaults.cardColors(containerColor = SkillSurface),
                     shape = RoundedCornerShape(14.dp)
                 ) {
@@ -387,7 +671,7 @@ fun CourseDetailScreen(
             }
 
             // ────────────────────────────────────────────────────────
-            // 4. TABS: Descripción | Lecciones | Requisitos
+            // 5. TABS: Descripción | Lecciones | Requisitos
             // ────────────────────────────────────────────────────────
             item {
                 TabRow(
@@ -413,7 +697,7 @@ fun CourseDetailScreen(
             }
 
             // ────────────────────────────────────────────────────────
-            // 5. CONTENIDO DE LA TAB SELECCIONADA
+            // 6. CONTENIDO DE LA TAB SELECCIONADA
             // ────────────────────────────────────────────────────────
             when (selectedTab) {
                 // ── TAB 0: DESCRIPCIÓN ──────────────────────────────

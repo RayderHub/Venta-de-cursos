@@ -309,9 +309,14 @@ fun MainAppScreen() {
                         selectedCourse = selectedCourse,
                         isLoadingDetail = isLoadingDetail,
                         isAlreadyEnrolled = isAlreadyEnrolled,
+                        userId = session?.userId,
+                        accessToken = session?.accessToken,
+                        onRatingSubmitted = {
+                            selectedCourseId?.let { coursesViewModel.loadCourseDetail(it) }
+                        },
                         onBackClick = {
                             selectedCourseId = null
-                            currentScreen = if (previousScreen in listOf("home", "catalog")) previousScreen else "home"
+                            currentScreen = if (previousScreen in listOf("home", "catalog", "my_courses")) previousScreen else "home"
                         },
                         onGoToCourse = { c ->
                             learningCourse = c
@@ -381,6 +386,12 @@ fun MainAppScreen() {
                         MyCoursesScreen(
                             enrolledCourses = enrolledCourses,
                             isLoading = isLoadingEnrolled,
+                            onCourseClick = { cursoId ->
+                                selectedCourseId = cursoId
+                                coursesViewModel.loadCourseDetail(cursoId)
+                                previousScreen = "my_courses"
+                                currentScreen = "course_detail"
+                            },
                             onCourseLearnClick = { curso, progreso ->
                                 learningCourse = curso
                                 learningCourseProgress = progreso

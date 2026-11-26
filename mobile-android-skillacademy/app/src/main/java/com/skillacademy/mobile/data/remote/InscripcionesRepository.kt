@@ -60,6 +60,11 @@ data class TareaResultadoUiModel(
     val respuestasJson: String = ""
 )
 
+data class UserCourseReview(
+    val rating: Int,
+    val comment: String
+)
+
 /**
  * Resuelve cualquier tipo de fuente de imagen (JSON {url:...}, Base64 crudo, data:image URI o HTTP/HTTPS)
  * retornando un Bitmap listo para renderizar o la URL limpia para Coil.
@@ -737,5 +742,69 @@ object InscripcionesRepository {
                 estado = "Pendiente"
             )
         )
+    }
+
+    /**
+     * Consulta la calificación y reseña previa que el usuario dejó en este curso
+     * desde la tabla `curso_reviews` de Supabase (mismo origen que la web).
+     */
+    suspend fun fetchUserReview(userId: String, cursoId: Long, accessToken: String? = null): UserCourseReview? = withContext(Dispatchers.IO) {
+        try {
+            val path = "/rest/v1/curso_reviews?usuario_id=eq.$userId&curso_id=eq.$cursoId&select=rating,comment"
+            val res = SupabaseHttp.getArray(path, accessToken)
+            if (res.isSuccess && res.data != null && res.data.length() > 0) {
+                val o = res.data.getJSONObject(0)
+                UserCourseReview(
+                    rating = o.optInt("rating", 0),
+                    comment = o.optString("comment", "")
+                )
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Califica un curso guardando el rating (1..5) y comentario en `curso_reviews`
+     * y ejecutando el RPC `refresh_course_rating` de Supabase para recalcular los
+     * promedios del curso en tiempo real (mismo mecanismo y tablas que la web).
+     */
+    suspend fun calificarCurso(
+        userId: String,
+        cursoId: Long,
+        rating: Int,
+        comment: String,
+        accessToken: String? = null
+    ): SupabaseResult<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val bounded = rating.coerceIn(1, 5)
+            val body = JSONObject().apply {
+                put("usuario_id", userId)
+                put("curso_id", cursoId)
+                put("rating", bounded)
+                if (comment.isNotBlank()) {
+                    put("comment", comment.trim())
+                } else {
+                    put("comment", JSONObject.NULL)
+                }
+            }
+            val headers = mapOf(
+                "Prefer" to "resolution=merge-duplicates,return=representation"
+            )
+            val upsertRes = SupabaseHttp.post("/rest/v1/curso_reviews", body, accessToken, headers)
+            if (!upsertRes.isSuccess) {
+                return@withContext SupabaseResult(error = upsertRes.error ?: "Error al guardar calificación")
+            }
+
+            // Llamar al RPC refresh_course_rating de Supabase para sincronizar promedios y total de reseñas
+            val rpcBody = JSONObject().apply {
+                put("target_curso_id", cursoId)
+            }
+            SupabaseHttp.post("/rest/v1/rpc/refresh_course_rating", rpcBody, accessToken)
+
+            SupabaseResult(data = true)
+        } catch (e: Exception) {
+            SupabaseResult(error = e.message ?: "Error al calificar curso")
+        }
     }
 }
